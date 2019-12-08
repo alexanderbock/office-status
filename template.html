@@ -1,0 +1,98 @@
+<html>
+  <head>
+    <style>
+      :root {
+        --main-color: #1c7ec6;
+        --main-margin: 45px;
+        font-family: "KorolevLiU";
+      }
+
+      * {
+        cursor: none;
+      }
+
+      hr.main {
+        color: var(--main-color);
+        background-color: var(--main-color);
+        height: 15px;
+        margin-bottom: calc(0.75 * var(--main-margin));
+      }
+
+      hr.second {
+        color: #000000;
+        background-color: #000000;
+        height: 2.5px;
+        margin-bottom: calc(3* var(--main-margin));
+      }
+      
+      div.room {
+        color: var(--main-color);
+        font-size: 130px;
+        text-transform: uppercase;
+        margin-bottom: var(--main-margin);
+      }
+      
+      div.department {
+        color: var(--main-color);
+        font-size: 120px;
+        margin-bottom: var(--main-margin);
+      }
+      
+      div.division {
+        color: var(--main-color);
+        font-size: 80px;
+        font-variant: small-caps;
+        margin-bottom: calc(0.75 * var(--main-margin));
+      }
+      
+      div.name {
+        font-size: 72px;
+        margin-bottom: var(--main-margin);
+      }
+
+      div.group { 
+        font-size: 64px;
+      }
+      
+      div.title {
+        font-size: 64px;
+        margin-bottom: var(--main-margin);
+      }
+
+      div.status {
+        font-size: 68px;
+        font-style: italic;
+      }
+
+      div.timestamp {
+        font-size: 32px;
+        position: fixed;
+        bottom: 0;
+        right: 0;
+      }
+
+      div.video {
+        visibility: hidden;
+        position: fixed;
+        bottom: 0;
+      }
+    </style>
+
+    <meta http-equiv="refresh" content="300" />
+  </head>
+  <body>
+  <div class="room">Rum G406</div>
+  <hr class="main" />
+  <div class="department">ITN</div>
+  <div class="division">Medie- och Informationsteknik</div>
+  <hr class="main" />
+  <div class="name">Alexander Bock</div>
+  <div class="group">Datorgrafik och bildbehandling</div>
+  <div class="title">Bitr&auml;dande universitetslektor</div>
+  <hr class="second" />
+  <div class="status">%%%STATUS%%%</div>
+  <div class="video">%%%VIDEO%%%</div>
+  <div class="timestamp">%%%TIMESTAMP%%%</div>	
+  </body>
+</html>
+

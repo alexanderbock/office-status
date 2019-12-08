@@ -1,0 +1,14 @@
+{
+  "name": "office-status",
+  "version": "1.0.0",
+  "description": "",
+  "main": "update-webpage.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Alexander Bock",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "moment-timezone": "^0.5.27"
+  }
+}
