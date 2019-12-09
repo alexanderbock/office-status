@@ -1,14 +1,18 @@
+'use strict';
+
 const fs = require('fs');
 const http = require('https');
 const moment = require('moment-timezone');
 
 // TODO: Get location from calendar entry
 // TODO: Get adjacent calendar entries
+// TODO: Add random XKCD comic at the bottom
+// TODO(maybe): Add random OpenSpace/paper video at the bottom
 
 //
 // Global setup
-let AuthFile = JSON.parse(fs.readFileSync('auth.json'));
-let ConfigFile = JSON.parse(fs.readFileSync('config.json'));
+const AuthFile = JSON.parse(fs.readFileSync('auth.json'));
+const ConfigFile = JSON.parse(fs.readFileSync('config.json'));
 const Username = AuthFile['username'];
 const Password = AuthFile['password'];
 const Hostname = ConfigFile['hostname'];
@@ -16,6 +20,7 @@ const Port = ConfigFile['port'];
 const Path = ConfigFile['path'];
 const WorkingHours = ConfigFile['working-hours'];
 const BasicAuth = 'Basic ' + Buffer.from(Username + ':' + Password).toString('base64');
+
 
 // Returns the request options used for asking for calendar entries
 function requestOptions() {
@@ -44,20 +49,38 @@ function parseCalendarEntry(text) {
     return timeMoment;
   }
 
+  function parseLocation() {
+    // Need to check against \nLOCATION: instead of LOCATION: as there might be another key that has
+    // LOCATION as the last word; particularly 'X-LIC-LOCATION'
+    const beg = text.indexOf('\nLOCATION:');
+    const end = text.indexOf('\n', beg + '\nLOCATION'.length);
+    if (beg == -1) {
+      return null;
+    }
+    else {
+      const location = text.substring(beg + '\nLOCATION'.length + 1, end);
+      return location;
+    }
+  }
+
+//  console.log(text);
+
   const beg = text.indexOf('SUMMARY:');
   if (beg == -1) {
     // We got a value back that did not contain a SUMMARY list
-    return [ null, null, null ];
+    return null
   }
   else {
     const status = text.substring(beg + 'SUMMARY'.length + 1, text.indexOf('\n', beg));
+
+    const location = parseLocation();
     const startTime = parseTime('DTSTART;');
     const endTime = parseTime('DTEND;');
-    return [ startTime, endTime, status ];
+    return [ startTime, endTime, location, status ];
   }
 }
 
-function writeIndex(status, isAsleep, nowLocal) {
+function writeIndex(status, isAsleep) {
   const SourceFile = 'template.html';
   const TargetFile = 'index.html';
   const TargetPath = '../public/office-status/';
@@ -67,8 +90,14 @@ function writeIndex(status, isAsleep, nowLocal) {
   }
   const template = fs.readFileSync(SourceFile, 'utf8');
 
+  // Something is wrong with the capturing of the surrounding nowTime
+  const nowTime = moment();
+
   if (status == null) {
-    if (isAsleep) {
+    const h = nowTime.hours();
+    const outOfWorkingHours = h <= WorkingHours[0] || h >= WorkingHours[1];
+
+    if (outOfWorkingHours) {
       status = "Probably home";
     }
     else {
@@ -77,9 +106,8 @@ function writeIndex(status, isAsleep, nowLocal) {
     }
   }
 
-  const nowStr = nowLocal.format('YYYY-MM-DD HH:mm:ss');
   const c1 = template.replace('%%%STATUS%%%', status);
-  const c2 = c1.replace('%%%TIMESTAMP%%%', 'Last updated: ' + nowStr);
+  const c2 = c1.replace('%%%TIMESTAMP%%%', 'Last updated: ' + nowTime.format('YYYY-MM-DD HH:mm:ss'));
   const content = c2;
 
   fs.writeFileSync(TargetFile, content, 'utf8');
@@ -92,27 +120,36 @@ function writeIndex(status, isAsleep, nowLocal) {
 
 
 
-function requestCalendarEntry(time, localTime, isAsleep) {
+function requestCalendarEntry(time, isAsleep) {
   const req = http.request(requestOptions(), (res) => {
     res.setEncoding('utf8');
     res.on('data', (chunk) => {
-      const [ startTime, endTime, status ] = parseCalendarEntry(chunk);
-      if (startTime && endTime && status) {
-        writeIndex('(' + startTime.format('HH:mm') + '-' + endTime.format('HH:mm') + ') ' + status, isAsleep, localTime);
+      const result = parseCalendarEntry(chunk);
+      if (result == null) {
+        writeIndex(null, isAsleep);
       }
       else {
-        writeIndex(null, isAsleep, localTime);
+        const startTime = result[0];
+        const endTime = result[1];
+        const location = result[2];
+        const status = result[3];
+
+        let s = '(' + startTime.format('HH:mm') + '-' + endTime.format('HH:mm') + ') ' + status;
+        if (location != null) {
+          s = s + '<br />' + location;
+        }
+        writeIndex(s, isAsleep);
       }
     });
     res.on('error', (e) => {
       console.log(e.message);
-      writeIndex('Error: ' + e.message, isAsleep, localTime);
+      writeIndex('Error: ' + e.message, isAsleep);
     });
   });
 
   const DateFormat = 'YYYYMMDDTHHmmss';
-  const nowStr = time.utc().format(DateFormat);
-  const thenStr = time.add(1, 'seconds').utc().format(DateFormat);
+  const nowStr = nowTime.utc().format(DateFormat);
+  const thenStr = nowTime.add(1, 'seconds').utc().format(DateFormat);
 
   const msg = `
   <c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
@@ -134,8 +171,8 @@ function requestCalendarEntry(time, localTime, isAsleep) {
   }
 }
 
-const now = moment();
-const localNow = now.tz('Europe/Stockholm');
-const h = localNow.hours();
-const outOfWorkingHours = h <= WorkingHours[0] || h >= WorkingHours[1];
-requestCalendarEntry(now, localNow, outOfWorkingHours);
+
+//
+// main
+const nowTime = moment();
+requestCalendarEntry();
