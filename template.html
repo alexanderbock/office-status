@@ -64,8 +64,16 @@
         font-style: italic;
       }
 
+      div.entry > * {
+        display: inline-block;
+      }
+
+      div.entry > * + * {
+        margin-left: 50px;
+      }
+
       div.timestamp {
-        font-size: 32px;
+        font-size: 18px;
         position: fixed;
         bottom: 0;
         right: 0;
@@ -92,7 +100,7 @@
   <hr class="second" />
   <div class="status">%%%STATUS%%%</div>
   <div class="video">%%%VIDEO%%%</div>
-  <div class="timestamp">%%%TIMESTAMP%%%</div>	
+  <div class="timestamp">%%%TIMESTAMP%%%</div>
   </body>
 </html>
 

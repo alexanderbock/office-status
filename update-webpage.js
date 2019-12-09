@@ -63,8 +63,6 @@ function parseCalendarEntry(text) {
     }
   }
 
-//  console.log(text);
-
   const beg = text.indexOf('SUMMARY:');
   if (beg == -1) {
     // We got a value back that did not contain a SUMMARY list
@@ -72,12 +70,41 @@ function parseCalendarEntry(text) {
   }
   else {
     const status = text.substring(beg + 'SUMMARY'.length + 1, text.indexOf('\n', beg));
-
     const location = parseLocation();
     const startTime = parseTime('DTSTART;');
     const endTime = parseTime('DTEND;');
-    return [ startTime, endTime, location, status ];
+    return {
+      status: status,
+      startTime: startTime,
+      endTime: endTime,
+      location: location
+    };
   }
+}
+
+function formatEntry(entry, isCurrent) {
+  const start = entry.startTime.format('HH:mm');
+  const end = entry.endTime.format('HH:mm');
+  const status = entry.status;
+  const location = entry.location || '';
+
+  let id;
+  if (isCurrent == -1) {
+    id = 'previous';
+  }
+  else if (isCurrent == 0) {
+    id = 'current';
+  }
+  else if (isCurrent == 1) {
+    id = 'next';
+  }
+
+  let result = `<div class="entry" id="${id}">`;
+  result += '<div class="time">' + '(' + start + '-' + end + ')' + '</div>';
+  result += '<div class="status">' + status + '</div>'
+  result += '<div class="location">' + location + '</div>';
+  result += '</div>';
+  return result;
 }
 
 function writeIndex(status, isAsleep) {
@@ -129,15 +156,7 @@ function requestCalendarEntry(time, isAsleep) {
         writeIndex(null, isAsleep);
       }
       else {
-        const startTime = result[0];
-        const endTime = result[1];
-        const location = result[2];
-        const status = result[3];
-
-        let s = '(' + startTime.format('HH:mm') + '-' + endTime.format('HH:mm') + ') ' + status;
-        if (location != null) {
-          s = s + '<br />' + location;
-        }
+        const s = formatEntry(result);
         writeIndex(s, isAsleep);
       }
     });
