@@ -9,6 +9,7 @@
   "author": "Alexander Bock",
   "license": "UNLICENSED",
   "dependencies": {
+    "fast-xml-parser": "^3.15.1",
     "moment-timezone": "^0.5.27"
   }
 }

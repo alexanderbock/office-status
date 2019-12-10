@@ -3,9 +3,8 @@
 const fs = require('fs');
 const http = require('https');
 const moment = require('moment-timezone');
+const parser = require('fast-xml-parser')
 
-// TODO: Get location from calendar entry
-// TODO: Get adjacent calendar entries
 // TODO: Add random XKCD comic at the bottom
 // TODO(maybe): Add random OpenSpace/paper video at the bottom
 
@@ -21,6 +20,8 @@ const Path = ConfigFile['path'];
 const WorkingHours = ConfigFile['working-hours'];
 const BasicAuth = 'Basic ' + Buffer.from(Username + ':' + Password).toString('base64');
 
+
+const now = moment();
 
 // Returns the request options used for asking for calendar entries
 function requestOptions() {
@@ -50,14 +51,14 @@ function parseCalendarEntry(text) {
   }
 
   function parseLocation() {
-    // Need to check against \nLOCATION: instead of LOCATION: as there might be another key that has
-    // LOCATION as the last word; particularly 'X-LIC-LOCATION'
+    // Need to check against \nLOCATION: instead of LOCATION: as there might be another
+    // key that has LOCATION as the last word; particularly 'X-LIC-LOCATION'
     const beg = text.indexOf('\nLOCATION:');
-    const end = text.indexOf('\n', beg + '\nLOCATION'.length);
     if (beg == -1) {
       return null;
     }
     else {
+      const end = text.indexOf('\n', beg + '\nLOCATION'.length);
       const location = text.substring(beg + '\nLOCATION'.length + 1, end);
       return location;
     }
@@ -69,45 +70,29 @@ function parseCalendarEntry(text) {
     return null
   }
   else {
-    const status = text.substring(beg + 'SUMMARY'.length + 1, text.indexOf('\n', beg));
-    const location = parseLocation();
     const startTime = parseTime('DTSTART;');
     const endTime = parseTime('DTEND;');
+    let ordering;
+    if (now >= startTime && now <= endTime) {
+      ordering = 'current';
+    }
+    else if (now >= endTime) {
+      ordering = 'previous';
+    }
+    else if (now <= startTime) {
+      ordering = 'next';
+    }
     return {
-      status: status,
+      status: text.substring(beg + 'SUMMARY'.length + 1, text.indexOf('\n', beg)),
       startTime: startTime,
       endTime: endTime,
-      location: location
+      ordering: ordering,
+      location: parseLocation()
     };
   }
 }
 
-function formatEntry(entry, isCurrent) {
-  const start = entry.startTime.format('HH:mm');
-  const end = entry.endTime.format('HH:mm');
-  const status = entry.status;
-  const location = entry.location || '';
-
-  let id;
-  if (isCurrent == -1) {
-    id = 'previous';
-  }
-  else if (isCurrent == 0) {
-    id = 'current';
-  }
-  else if (isCurrent == 1) {
-    id = 'next';
-  }
-
-  let result = `<div class="entry" id="${id}">`;
-  result += '<div class="time">' + '(' + start + '-' + end + ')' + '</div>';
-  result += '<div class="status">' + status + '</div>'
-  result += '<div class="location">' + location + '</div>';
-  result += '</div>';
-  return result;
-}
-
-function writeIndex(status, isAsleep) {
+function writeIndex(statuses) {
   const SourceFile = 'template.html';
   const TargetFile = 'index.html';
   const TargetPath = '../public/office-status/';
@@ -115,29 +100,40 @@ function writeIndex(status, isAsleep) {
   if (fs.existsSync(TargetFile)) {
     fs.unlinkSync(TargetFile);
   }
-  const template = fs.readFileSync(SourceFile, 'utf8');
+  let template = fs.readFileSync(SourceFile, 'utf8');
 
-  // Something is wrong with the capturing of the surrounding nowTime
-  const nowTime = moment();
+  if (statuses == null) {
 
-  if (status == null) {
-    const h = nowTime.hours();
+    const h = now.hours();
     const outOfWorkingHours = h <= WorkingHours[0] || h >= WorkingHours[1];
 
     if (outOfWorkingHours) {
-      status = "Probably home";
+      template = template.replace('%%%STATUS%%%', 'Probably home');
     }
     else {
-      const Shrug = '¯\\_(ツ)_/¯';
-      status = "Here, having a coffee, or &nbsp;" + Shrug;
+      template = template.replace('%%%STATUS%%%', 'Here, having a coffee, or &nbsp;¯\\_(ツ)_/¯');
     }
   }
+  else {
+    let status = '<table class="entries">';
+    statuses.forEach(e => {
+      const start = e.startTime.format('HH:mm');
+      const end = e.endTime.format('HH:mm');
+      const location = e.location || '';
 
-  const c1 = template.replace('%%%STATUS%%%', status);
-  const c2 = c1.replace('%%%TIMESTAMP%%%', 'Last updated: ' + nowTime.format('YYYY-MM-DD HH:mm:ss'));
-  const content = c2;
+      let result = `<div class="entry" id="${e.ordering}">`;
+      result += `<div class="time">(${start}&ndash;${end})</div>`;
+      result += `<div class="status">${e.status}</div>`
+      result += `<div class="location">${location}</div>`;
+      result += '</div>';
+      status += result;
+    });
+    status += '</table>';
+    template = template.replace('%%%STATUS%%%', status);
+  }
 
-  fs.writeFileSync(TargetFile, content, 'utf8');
+  template = template.replace('%%%TIMESTAMP%%%', 'Last updated: ' + now.format('YYYY-MM-DD HH:mm:ss'));
+  fs.writeFileSync(TargetFile, template, 'utf8');
 
   if (fs.existsSync(TargetPath + '/' + TargetFile)) {
     fs.unlinkSync(TargetPath + '/' + TargetFile);
@@ -146,52 +142,36 @@ function writeIndex(status, isAsleep) {
 }
 
 
-
-function requestCalendarEntry(time, isAsleep) {
-  const req = http.request(requestOptions(), (res) => {
-    res.setEncoding('utf8');
-    res.on('data', (chunk) => {
-      const result = parseCalendarEntry(chunk);
-      if (result == null) {
-        writeIndex(null, isAsleep);
-      }
-      else {
-        const s = formatEntry(result);
-        writeIndex(s, isAsleep);
-      }
-    });
-    res.on('error', (e) => {
-      console.log(e.message);
-      writeIndex('Error: ' + e.message, isAsleep);
-    });
-  });
-
-  const DateFormat = 'YYYYMMDDTHHmmss';
-  const nowStr = nowTime.utc().format(DateFormat);
-  const thenStr = nowTime.add(1, 'seconds').utc().format(DateFormat);
-
-  const msg = `
-  <c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
-    <d:prop> <d:getetag /> <c:calendar-data /> </d:prop>
-    <c:filter>
-      <c:comp-filter name="VCALENDAR"> <c:comp-filter name="VEVENT">
-          <c:time-range start="${nowStr}" end="${thenStr}" />
-      </c:comp-filter> </c:comp-filter>
-    </c:filter>
-  </c:calendar-query>`;
-
-  try {
-    req.write(msg);
-    req.end();
-  }
-  catch(error) {
-    console.log(error);
-    writeIndex(null, isAsleep);
-  }
-}
-
-
 //
 // main
-const nowTime = moment();
-requestCalendarEntry();
+const req = http.request(requestOptions(), (res) => {
+  res.setEncoding('utf8');
+  res.on('data', chunk => {
+    const json = parser.parse(chunk);
+
+    // Extract the calendar entry information
+    let responses = json['d:multistatus']['d:response'];
+    if (!Array.isArray(responses)) {
+      // This is the case if the calendar only contains a single entry this day
+      responses = [ responses ];
+    }
+    const lst = responses.map(v => v['d:propstat']['d:prop']['cal:calendar-data']);
+    const entries = lst.map(v => parseCalendarEntry(v));
+    const sortedEntries = entries.sort(function(a,b) { return a.startTime > b.startTime; });
+    writeIndex(sortedEntries);
+  });
+});
+
+const today = now.utc().format('YYYYMMDD');
+const msg = `
+<c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
+  <d:prop> <d:getetag /> <c:calendar-data /> </d:prop>
+  <c:filter>
+    <c:comp-filter name="VCALENDAR"> <c:comp-filter name="VEVENT">
+        <c:time-range start="${today}T000000" end="${today}T235959" />
+    </c:comp-filter> </c:comp-filter>
+  </c:filter>
+</c:calendar-query>`;
+
+req.write(msg);
+req.end();
