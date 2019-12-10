@@ -3,12 +3,12 @@
     <style>
       :root {
         --main-color: #1c7ec6;
-        --main-margin: 45px;
-        font-family: "KorolevLiU";
+        --main-margin: 25px;
       }
 
       * {
         cursor: none;
+        font-family: "KorolevLiU";
       }
 
       hr.main {
@@ -22,31 +22,30 @@
         color: #000000;
         background-color: #000000;
         height: 2.5px;
-        margin-bottom: calc(3* var(--main-margin));
+        margin-bottom: var(--main-margin);
       }
       
-      div.room {
+      div.heading {
         color: var(--main-color);
+      }
+
+      div#room {
         font-size: 130px;
         text-transform: uppercase;
-        margin-bottom: var(--main-margin);
       }
       
-      div.department {
-        color: var(--main-color);
+      div#department {
         font-size: 120px;
-        margin-bottom: var(--main-margin);
       }
       
-      div.division {
-        color: var(--main-color);
+      div#division {
         font-size: 80px;
         font-variant: small-caps;
-        margin-bottom: calc(0.75 * var(--main-margin));
+        margin-bottom: calc(0.5 * var(--main-margin));
       }
       
       div.name {
-        font-size: 72px;
+        font-size: 78px;
         margin-bottom: var(--main-margin);
       }
 
@@ -66,7 +65,7 @@
       }
 
       td.time {
-        width: 35%;
+        width: 425px;
       }
 
       td.location {
@@ -91,11 +90,12 @@
 
       div.content {
         position: fixed;
-        bottom: 0;
+        bottom: 10px;
+        left: 10px;
       }
 
       div.content > img {
-        max-height: 500px;
+        max-height: 512;
         height: auto;
         width: auto;
       }
@@ -104,20 +104,17 @@
     <meta http-equiv="refresh" content="300" />
   </head>
   <body>
-  <div class="room">Rum G406</div>
+  <div class="heading" id="room">Rum G406</div>
   <hr class="main" />
-  <div class="department">ITN</div>
-  <div class="division">Medie- och Informationsteknik</div>
+  <div class="heading" id="department">ITN</div>
+  <div class="heading" id="division">Medie- och Informationsteknik</div>
   <hr class="main" />
   <div class="name">Alexander Bock</div>
   <div class="group">Datorgrafik och bildbehandling</div>
   <div class="title">Bitr&auml;dande universitetslektor</div>
   <hr class="second" />
   <div class="status">%%%STATUS%%%</div>
-  <div class="content">
-    Random XKCD <br />
-    <img src="%%%CONTENT%%%" />
-  </div>
+  <div class="content">%%%CONTENT-TEXT%%% <br /> <img src="%%%CONTENT%%%" /> </div>
   <div class="timestamp">%%%TIMESTAMP%%%</div>
   </body>
 </html>

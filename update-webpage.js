@@ -19,6 +19,7 @@ const Hostname = ConfigFile['hostname'];
 const Port = ConfigFile['port'];
 const Path = ConfigFile['path'];
 const WorkingHours = ConfigFile['working-hours'];
+const XKCDSkip = ConfigFile['xkcd-skip'];
 const BasicAuth = 'Basic ' + Buffer.from(Username + ':' + Password).toString('base64');
 
 
@@ -93,7 +94,7 @@ function parseCalendarEntry(text) {
   }
 }
 
-function writeIndex(statuses, imagePath) {
+function writeIndex(statuses, imageText, imagePath) {
   const SourceFile = 'template.html';
   const TargetFile = 'index.html';
   const TargetPath = '../public/office-status/';
@@ -133,7 +134,14 @@ function writeIndex(statuses, imagePath) {
     template = template.replace('%%%STATUS%%%', status);
   }
 
-  template = template.replace('%%%CONTENT%%%', imagePath);
+  if (imageText && imagePath) {
+    template = template.replace('%%%CONTENT-TEXT%%%', imageText);
+    template = template.replace('%%%CONTENT%%%', imagePath);
+  }
+  else {
+    template = template.replace('%%%CONTENT-TEXT%%%', '');
+    template = template.replace('%%%CONTENT%%%', '');
+  }
 
   template = template.replace('%%%TIMESTAMP%%%', 'Last updated: ' + now.format('YYYY-MM-DD HH:mm:ss'));
   fs.writeFileSync(TargetFile, template, 'utf8');
@@ -163,12 +171,21 @@ const req = https.request(requestOptions(), res => {
     const sortedEntries = entries.sort(function(a,b) { return a.startTime > b.startTime; });
 
     request('https://c.xkcd.com/random/comic/', (error, response, body) => {
-      const content = response.body;
-      const SearchString = 'Image URL (for hotlinking/embedding): https://imgs.xkcd.com/comics/';
-      const imgBeg = content.indexOf(SearchString) + SearchString.length;
-      const imgEnd = content.indexOf('.png', imgBeg) + '.png'.length;
-      const imagePath = 'https://imgs.xkcd.com/comics/' + content.substring(imgBeg, imgEnd);
-      writeIndex(sortedEntries, imagePath);
+      const comicNumber = response.request.href.substring('https://xkcd.com/'.length).slice(0, -1);
+      if (XKCDSkip.includes(comicNumber)) {
+        writeIndex(sortedEntries, null, null);
+      }
+      else {
+        const imageText = `Random XKCD (#${comicNumber})`;
+
+        // The missing / is because in some of the XKCD that line is split into two
+        const SearchString = 'Image URL (for hotlinking/embedding): https://imgs.xkcd.com/comics';
+        const imgBeg = response.body.indexOf(SearchString) + SearchString.length;
+        const imgEnd = response.body.indexOf('.', imgBeg) + '.png'.length;
+        const imagePath = 'https://imgs.xkcd.com/comics/' + response.body.substring(imgBeg, imgEnd);
+
+        writeIndex(sortedEntries, imageText, imagePath);
+      }
     });
   });
 });
