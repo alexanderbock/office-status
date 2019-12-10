@@ -1,9 +1,10 @@
 'use strict';
 
 const fs = require('fs');
-const http = require('https');
+const https = require('https');
 const moment = require('moment-timezone');
-const parser = require('fast-xml-parser')
+const parser = require('fast-xml-parser');
+const request = require('request');
 
 // TODO: Add random XKCD comic at the bottom
 // TODO(maybe): Add random OpenSpace/paper video at the bottom
@@ -21,7 +22,6 @@ const WorkingHours = ConfigFile['working-hours'];
 const BasicAuth = 'Basic ' + Buffer.from(Username + ':' + Password).toString('base64');
 
 
-const now = moment();
 
 // Returns the request options used for asking for calendar entries
 function requestOptions() {
@@ -73,6 +73,7 @@ function parseCalendarEntry(text) {
     const startTime = parseTime('DTSTART;');
     const endTime = parseTime('DTEND;');
     let ordering;
+    const now = moment();
     if (now >= startTime && now <= endTime) {
       ordering = 'current';
     }
@@ -92,7 +93,7 @@ function parseCalendarEntry(text) {
   }
 }
 
-function writeIndex(statuses) {
+function writeIndex(statuses, imagePath) {
   const SourceFile = 'template.html';
   const TargetFile = 'index.html';
   const TargetPath = '../public/office-status/';
@@ -102,8 +103,8 @@ function writeIndex(statuses) {
   }
   let template = fs.readFileSync(SourceFile, 'utf8');
 
+  const now = moment();
   if (statuses == null) {
-
     const h = now.hours();
     const outOfWorkingHours = h <= WorkingHours[0] || h >= WorkingHours[1];
 
@@ -121,16 +122,18 @@ function writeIndex(statuses) {
       const end = e.endTime.format('HH:mm');
       const location = e.location || '';
 
-      let result = `<div class="entry" id="${e.ordering}">`;
-      result += `<div class="time">(${start}&ndash;${end})</div>`;
-      result += `<div class="status">${e.status}</div>`
-      result += `<div class="location">${location}</div>`;
-      result += '</div>';
+      let result = `<tr class="entry" id="${e.ordering}">`;
+      result += `<td class="time">(${start}&ndash;${end})</td>`;
+      result += `<td class="status">${e.status}</td>`
+      result += `<td class="location">${location}</td>`;
+      result += '</tr>';
       status += result;
     });
     status += '</table>';
     template = template.replace('%%%STATUS%%%', status);
   }
+
+  template = template.replace('%%%CONTENT%%%', imagePath);
 
   template = template.replace('%%%TIMESTAMP%%%', 'Last updated: ' + now.format('YYYY-MM-DD HH:mm:ss'));
   fs.writeFileSync(TargetFile, template, 'utf8');
@@ -144,7 +147,7 @@ function writeIndex(statuses) {
 
 //
 // main
-const req = http.request(requestOptions(), (res) => {
+const req = https.request(requestOptions(), res => {
   res.setEncoding('utf8');
   res.on('data', chunk => {
     const json = parser.parse(chunk);
@@ -158,11 +161,19 @@ const req = http.request(requestOptions(), (res) => {
     const lst = responses.map(v => v['d:propstat']['d:prop']['cal:calendar-data']);
     const entries = lst.map(v => parseCalendarEntry(v));
     const sortedEntries = entries.sort(function(a,b) { return a.startTime > b.startTime; });
-    writeIndex(sortedEntries);
+
+    request('https://c.xkcd.com/random/comic/', (error, response, body) => {
+      const content = response.body;
+      const SearchString = 'Image URL (for hotlinking/embedding): https://imgs.xkcd.com/comics/';
+      const imgBeg = content.indexOf(SearchString) + SearchString.length;
+      const imgEnd = content.indexOf('.png', imgBeg) + '.png'.length;
+      const imagePath = 'https://imgs.xkcd.com/comics/' + content.substring(imgBeg, imgEnd);
+      writeIndex(sortedEntries, imagePath);
+    });
   });
 });
 
-const today = now.utc().format('YYYYMMDD');
+const today = moment().utc().format('YYYYMMDD');
 const msg = `
 <c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
   <d:prop> <d:getetag /> <c:calendar-data /> </d:prop>

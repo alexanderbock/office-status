@@ -59,17 +59,27 @@
         margin-bottom: var(--main-margin);
       }
 
-      div.status {
+      table.entries {
         font-size: 68px;
         font-style: italic;
+        width: 100%;
       }
 
-      div.entry > * {
-        display: inline-block;
+      td.time {
+        width: 35%;
       }
 
-      div.entry > * + * {
-        margin-left: 50px;
+      td.location {
+        position: fixed;
+        right: 10;
+      }
+
+      tr#previous {
+        font-size: 45px;
+      }
+
+      tr#next {
+        font-size: 45px;
       }
 
       div.timestamp {
@@ -79,10 +89,15 @@
         right: 0;
       }
 
-      div.video {
-        visibility: hidden;
+      div.content {
         position: fixed;
         bottom: 0;
+      }
+
+      div.content > img {
+        max-height: 500px;
+        height: auto;
+        width: auto;
       }
     </style>
 
@@ -99,7 +114,10 @@
   <div class="title">Bitr&auml;dande universitetslektor</div>
   <hr class="second" />
   <div class="status">%%%STATUS%%%</div>
-  <div class="video">%%%VIDEO%%%</div>
+  <div class="content">
+    Random XKCD <br />
+    <img src="%%%CONTENT%%%" />
+  </div>
   <div class="timestamp">%%%TIMESTAMP%%%</div>
   </body>
 </html>
