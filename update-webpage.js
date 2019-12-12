@@ -6,38 +6,16 @@ const moment = require('moment-timezone');
 const parser = require('fast-xml-parser');
 const request = require('request');
 
-// TODO: Add random XKCD comic at the bottom
 // TODO(maybe): Add random OpenSpace/paper video at the bottom
 
 //
 // Global setup
 const AuthFile = JSON.parse(fs.readFileSync('auth.json'));
 const ConfigFile = JSON.parse(fs.readFileSync('config.json'));
-const Username = AuthFile['username'];
-const Password = AuthFile['password'];
-const Hostname = ConfigFile['hostname'];
-const Port = ConfigFile['port'];
-const Path = ConfigFile['path'];
-const WorkingHours = ConfigFile['working-hours'];
-const XKCDSkip = ConfigFile['xkcd-skip'];
-const BasicAuth = 'Basic ' + Buffer.from(Username + ':' + Password).toString('base64');
+const XKCD = JSON.parse(fs.readFileSync('xkcd.json'));
 
+const TargetPath = '../public/office-status/';
 
-
-// Returns the request options used for asking for calendar entries
-function requestOptions() {
-  return {
-    hostname: Hostname,
-    port: Port,
-    path: Path,
-    method: 'REPORT',
-    headers: {
-      'Content-Type': 'text/xml',
-      'Depth': 1,
-      'Authorization': BasicAuth
-    }
-  };
-}
 
 // Given a CalDAV entry, it returns the starting time, ending time, and the summary of the
 // entry
@@ -68,7 +46,7 @@ function parseCalendarEntry(text) {
   const beg = text.indexOf('SUMMARY:');
   if (beg == -1) {
     // We got a value back that did not contain a SUMMARY list
-    return null
+    return null;
   }
   else {
     const startTime = parseTime('DTSTART;');
@@ -94,27 +72,14 @@ function parseCalendarEntry(text) {
   }
 }
 
-function writeIndex(statuses, imageText, imagePath) {
+function writeIndex(statuses) {
   const SourceFile = 'template.html';
   const TargetFile = 'index.html';
-  const TargetPath = '../public/office-status/';
 
-  if (fs.existsSync(TargetFile)) {
-    fs.unlinkSync(TargetFile);
-  }
   let template = fs.readFileSync(SourceFile, 'utf8');
 
-  const now = moment();
   if (statuses == null) {
-    const h = now.hours();
-    const outOfWorkingHours = h <= WorkingHours[0] || h >= WorkingHours[1];
-
-    if (outOfWorkingHours) {
-      template = template.replace('%%%STATUS%%%', 'Probably home');
-    }
-    else {
-      template = template.replace('%%%STATUS%%%', 'Here, having a coffee, or &nbsp;¯\\_(ツ)_/¯');
-    }
+    template = template.replace('%%%STATUS%%%', '¯\\_(ツ)_/¯');
   }
   else {
     let status = '<table class="entries">';
@@ -134,16 +99,10 @@ function writeIndex(statuses, imageText, imagePath) {
     template = template.replace('%%%STATUS%%%', status);
   }
 
-  if (imageText && imagePath) {
-    template = template.replace('%%%CONTENT-TEXT%%%', imageText);
-    template = template.replace('%%%CONTENT%%%', imagePath);
-  }
-  else {
-    template = template.replace('%%%CONTENT-TEXT%%%', '');
-    template = template.replace('%%%CONTENT%%%', '');
-  }
+  template = template.replace('%%%CONTENT-TEXT%%%', `Random XKCD (#${XKCD.number})`);
+  template = template.replace('%%%CONTENT%%%', XKCD.file);
 
-  template = template.replace('%%%TIMESTAMP%%%', 'Last updated: ' + now.format('YYYY-MM-DD HH:mm:ss'));
+  template = template.replace('%%%TIMESTAMP%%%', `Last updated: ${moment().format('YYYY-MM-DD HH:mm:ss')}`);
   fs.writeFileSync(TargetFile, template, 'utf8');
 
   if (fs.existsSync(TargetPath + '/' + TargetFile)) {
@@ -152,55 +111,98 @@ function writeIndex(statuses, imageText, imagePath) {
   fs.renameSync(TargetFile, TargetPath + '/' + TargetFile);
 }
 
+function downloadXKCD(now) {
+  // If the previous download is more than a day old, download a new file. This download will
+  // probably take longer than the other parts of this file, so the first update of the day
+  // might still use the old XKCD image, but who cares
+  if (now >= moment(XKCD.date).add(1, 'day')) {
+      console.log(`Downloading new XKCD. Now: ${now.format('YYYYMMDD')}, Previous: ${XKCD.date}`);
+      request('https://c.xkcd.com/random/comic/', (error, response, body) => {
+        const comicNumber = response.request.href.substring('https://xkcd.com/'.length).slice(0, -1);
+        if (ConfigFile['xkcd-skip'].includes(comicNumber)) {
+          console.log(`Skipping comic ${comicNumber} due to blacklisting`);
+        }
+        else {
+          const imageText = `Random XKCD (#${comicNumber})`;
 
-//
-// main
-const req = https.request(requestOptions(), res => {
-  res.setEncoding('utf8');
-  res.on('data', chunk => {
-    const json = parser.parse(chunk);
+          // The missing / is because in some of the XKCD that line is split into two
+          const SearchString = 'Image URL (for hotlinking/embedding): https://imgs.xkcd.com/comics';
+          const imgBeg = response.body.indexOf(SearchString) + SearchString.length;
+          const imgEnd = response.body.indexOf('.', imgBeg) + '.png'.length;
+          const imagePath = `https://imgs.xkcd.com/comics/${response.body.substring(imgBeg, imgEnd)}`;
+          const ext = imagePath.substring(imagePath.length - 3);
 
-    // Extract the calendar entry information
-    let responses = json['d:multistatus']['d:response'];
-    if (!Array.isArray(responses)) {
-      // This is the case if the calendar only contains a single entry this day
-      responses = [ responses ];
+          const targetFile = TargetPath + 'xkcd.' + ext;
+          const file = fs.createWriteStream(targetFile);
+          https.get(imagePath, res => res.pipe(file));
+
+          console.log(`Number: ${comicnumber}`, `Image: ${imagePath}`);
+          const xkcd = {
+              date: moment().utc().format('YYYYMMDD'),
+              file: 'xkcd.' + ext,
+              number: comicNumber
+          }
+          fs.writeFile('xkcd.json', JSON.stringify(xkcd), 'utf8', function() {});
+        }
+      });
+  }
+}
+
+function updateWebpage(now) {
+  // Trigger the update of the webpage
+  const today = now.utc().format('YYYYMMDD');
+  const msg = `
+  <c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
+    <d:prop> <d:getetag /> <c:calendar-data /> </d:prop>
+    <c:filter>
+      <c:comp-filter name="VCALENDAR"> <c:comp-filter name="VEVENT">
+          <c:time-range start="${today}T000000" end="${today}T235959" />
+      </c:comp-filter> </c:comp-filter>
+    </c:filter>
+  </c:calendar-query>`;
+
+  const Username = AuthFile['username'];
+  const Password = AuthFile['password'];
+  const options = {
+    hostname: ConfigFile['hostname'],
+    port: ConfigFile['port'],
+    path: ConfigFile['path'],
+    method: 'REPORT',
+    headers: {
+      'Content-Type': 'text/xml',
+      'Depth': 1,
+      'Authorization': 'Basic ' + Buffer.from(Username + ':' + Password).toString('base64')
     }
-    const lst = responses.map(v => v['d:propstat']['d:prop']['cal:calendar-data']);
-    const entries = lst.map(v => parseCalendarEntry(v));
-    const sortedEntries = entries.sort(function(a,b) { return a.startTime > b.startTime; });
+  };
 
-    request('https://c.xkcd.com/random/comic/', (error, response, body) => {
-      const comicNumber = response.request.href.substring('https://xkcd.com/'.length).slice(0, -1);
-      if (XKCDSkip.includes(comicNumber)) {
-        writeIndex(sortedEntries, null, null);
+  const req = https.request(options, res => {
+    res.setEncoding('utf8');
+    res.on('data', chunk => {
+      const json = parser.parse(chunk);
+
+      // Extract the calendar entry information
+      let responses = json['d:multistatus']['d:response'];
+      if (responses) {
+        if (!Array.isArray(responses)) {
+          // This is the case if the calendar only contains a single entry this day
+          responses = [ responses ];
+        }
+        const lst = responses.map(v => v['d:propstat']['d:prop']['cal:calendar-data']);
+        const entries = lst.map(v => parseCalendarEntry(v));
+        const sortedEntries = entries.sort(function(a,b) { return a.startTime > b.startTime; });
+        writeIndex(sortedEntries);
       }
       else {
-        const imageText = `Random XKCD (#${comicNumber})`;
-
-        // The missing / is because in some of the XKCD that line is split into two
-        const SearchString = 'Image URL (for hotlinking/embedding): https://imgs.xkcd.com/comics';
-        const imgBeg = response.body.indexOf(SearchString) + SearchString.length;
-        const imgEnd = response.body.indexOf('.', imgBeg) + '.png'.length;
-        const imagePath = 'https://imgs.xkcd.com/comics/' + response.body.substring(imgBeg, imgEnd);
-
-        writeIndex(sortedEntries, imageText, imagePath);
+        writeIndex(null);
       }
     });
   });
-});
+  req.write(msg);
+  req.end();
+}
 
 //
-// Trigger the update of the webpage
-const today = moment().utc().format('YYYYMMDD');
-const msg = `
-<c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
-  <d:prop> <d:getetag /> <c:calendar-data /> </d:prop>
-  <c:filter>
-    <c:comp-filter name="VCALENDAR"> <c:comp-filter name="VEVENT">
-        <c:time-range start="${today}T000000" end="${today}T235959" />
-    </c:comp-filter> </c:comp-filter>
-  </c:filter>
-</c:calendar-query>`;
-req.write(msg);
-req.end();
+// main
+const now = moment();
+downloadXKCD(now);
+updateWebpage(now);
