@@ -190,6 +190,8 @@ const req = https.request(requestOptions(), res => {
   });
 });
 
+//
+// Trigger the update of the webpage
 const today = moment().utc().format('YYYYMMDD');
 const msg = `
 <c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
@@ -200,6 +202,5 @@ const msg = `
     </c:comp-filter> </c:comp-filter>
   </c:filter>
 </c:calendar-query>`;
-
 req.write(msg);
 req.end();
