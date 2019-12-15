@@ -14,7 +14,7 @@ const AuthFile = JSON.parse(fs.readFileSync('auth.json'));
 const ConfigFile = JSON.parse(fs.readFileSync('config.json'));
 const XKCD = JSON.parse(fs.readFileSync('xkcd.json'));
 
-const TargetPath = '../public/office-status/';
+const TargetPath = ConfigFile['target-path'];
 
 
 // Given a CalDAV entry, it returns the starting time, ending time, and the summary of the
