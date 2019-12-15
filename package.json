@@ -1,13 +1,13 @@
 {
   "name": "office-status",
   "version": "1.0.0",
-  "description": "",
+  "description": "A script to generate an office plate that updates based on CalDAV requests",
   "main": "update-webpage.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Alexander Bock",
-  "license": "UNLICENSED",
+  "license": "BSD 2-clause",
   "dependencies": {
     "fast-xml-parser": "^3.15.1",
     "moment-timezone": "^0.5.27",
