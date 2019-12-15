@@ -136,7 +136,7 @@ function downloadXKCD(now) {
           const file = fs.createWriteStream(targetFile);
           https.get(imagePath, res => res.pipe(file));
 
-          console.log(`Number: ${comicnumber}`, `Image: ${imagePath}`);
+          console.log(`Number: ${comicNumber}`, `Image: ${imagePath}`);
           const xkcd = {
               date: moment().utc().format('YYYYMMDD'),
               file: 'xkcd.' + ext,
