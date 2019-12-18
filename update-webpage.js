@@ -6,8 +6,6 @@ const moment = require('moment-timezone');
 const parser = require('fast-xml-parser');
 const request = require('request');
 
-// TODO(maybe): Add random OpenSpace/paper video at the bottom
-
 //
 // Global setup
 const AuthFile = JSON.parse(fs.readFileSync('auth.json'));
@@ -23,7 +21,20 @@ function parseCalendarEntry(text) {
   function parseTime(token) {
     const timeBeg = text.indexOf(token);
     const time = text.substring(timeBeg + token.length, text.indexOf('\n', timeBeg));
-    const timeTZ = time.substring('TZID='.length, time.indexOf(':'));
+
+    let timeTZ = 'UTC';
+    if (time.substring(0, 'TZID'.length) == 'TZID') {
+      // If we have a regular entry, the first value is going to be the timezone identifier
+      timeTZ = time.substring('TZID='.length, time.indexOf(':'));
+    }
+    else if (time.substring(0, 'VALUE'.length) == 'VALUE') {
+      // We have a full day entry, so there is no timezone identifier (at least in the
+      // ones created in Fantastical)
+    }
+    else {
+      console.log(time.substring(0, 'TZID'.length));
+      console.log('ERROR parsing date for data: ', text);
+    }
     const timeTime = time.substring(time.indexOf(':') + 1);
     const timeMoment = moment.tz(timeTime, timeTZ);
     return timeMoment;
@@ -49,25 +60,36 @@ function parseCalendarEntry(text) {
     return null;
   }
   else {
+    const location = parseLocation();
     const startTime = parseTime('DTSTART;');
     const endTime = parseTime('DTEND;');
+
+    // Checking whether the entry is a full day entry.  The way this is stored in the
+    // calendar heavily depends on the calendar application that was used to create the
+    // entry as the CalDAV standard is quiet about full day events.  Fantastical stores
+    // them as events lasting from 00:00 of day i to 00:00 of day i+1
+    const startDay = startTime.format('DD');
+    const startHourMinute = startTime.format('HH:mm');
+    const endDay = endTime.format('DD');
+    const endHourMinute = endTime.format('HH:mm');
+    const isFullDayEntry = (parseInt(startDay) + 1 === parseInt(endDay)) &&
+                           (startHourMinute === endHourMinute);
+
     let ordering;
     const now = moment();
     if (now >= startTime && now <= endTime) {
       ordering = 'current';
     }
-    else if (now >= endTime) {
-      ordering = 'previous';
-    }
-    else if (now <= startTime) {
-      ordering = 'next';
+    else {
+      ordering = 'other';
     }
     return {
       status: text.substring(beg + 'SUMMARY'.length + 1, text.indexOf('\n', beg)),
       startTime: startTime,
       endTime: endTime,
+      isFullDayEntry: isFullDayEntry,
       ordering: ordering,
-      location: parseLocation()
+      location: location
     };
   }
 }
@@ -84,12 +106,17 @@ function writeIndex(statuses) {
   else {
     let status = '<table class="entries">';
     statuses.forEach(e => {
-      const start = e.startTime.format('HH:mm');
-      const end = e.endTime.format('HH:mm');
       const location = e.location || '';
 
       let result = `<tr class="entry" id="${e.ordering}">`;
-      result += `<td class="time">(${start}&ndash;${end})</td>`;
+      if (e.isFullDayEntry) {
+        result += `<td class="time">Full day</td>`;
+      }
+      else {
+        const start = e.startTime.format('HH:mm');
+        const end = e.endTime.format('HH:mm');
+        result += `<td class="time">(${start}&ndash;${end})</td>`;
+      }
       result += `<td class="status">${e.status}</td>`
       result += `<td class="location">${location}</td>`;
       result += '</tr>';
