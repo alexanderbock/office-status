@@ -72,7 +72,7 @@ function parseCalendarEntry(text) {
     const startHourMinute = startTime.format('HH:mm');
     const endDay = endTime.format('DD');
     const endHourMinute = endTime.format('HH:mm');
-    const isFullDayEntry = (parseInt(startDay) + 1 === parseInt(endDay)) &&
+    const isFullDayEntry = (parseInt(startDay) !== parseInt(endDay)) &&
                            (startHourMinute === endHourMinute);
 
     let ordering;
@@ -109,18 +109,21 @@ function writeIndex(statuses) {
       const location = e.location || '';
 
       let result = `<tr class="entry" id="${e.ordering}">`;
+      const start = e.startTime.format('HH:mm');
+      const end = e.endTime.format('HH:mm');
       if (e.isFullDayEntry) {
-        result += `<td class="time">Full day</td>`;
+        result += `<td class="status fullday">${e.status}</td>`;
+        result += `<td class="location">${location}</td>`;
+        result += `</tr>`;
+        status += result;
       }
       else {
-        const start = e.startTime.format('HH:mm');
-        const end = e.endTime.format('HH:mm');
         result += `<td class="time">(${start}&ndash;${end})</td>`;
+        result += `<td class="status">${e.status}</td>`;
+        result += `<td class="location">${location}</td>`;
+        result += '</tr>';
+        status += result;
       }
-      result += `<td class="status">${e.status}</td>`
-      result += `<td class="location">${location}</td>`;
-      result += '</tr>';
-      status += result;
     });
     status += '</table>';
     template = template.replace('%%%STATUS%%%', status);
