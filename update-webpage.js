@@ -219,7 +219,7 @@ function updateWebpage(now) {
         }
         const lst = responses.map(v => v['d:propstat']['d:prop']['cal:calendar-data']);
         const entries = lst.map(v => parseCalendarEntry(v));
-        const sortedEntries = entries.sort(function(a,b) { return a.startTime > b.startTime; });
+        const sortedEntries = entries.sort(function(a,b) { return Number(a.startTime.format('HHmm')) > Number(b.startTime.format('HHmm')); });
         writeIndex(sortedEntries);
       }
       else {
