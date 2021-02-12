@@ -18,6 +18,7 @@ const TargetPath = ConfigFile['target-path'];
 // Given a CalDAV entry, it returns the starting time, ending time, and the summary of the
 // entry
 function parseCalendarEntry(text) {
+  console.log(text + '\n\n');
   function parseTime(token) {
     const timeBeg = text.indexOf(token);
     const time = text.substring(timeBeg + token.length, text.indexOf('\n', timeBeg));
@@ -85,8 +86,8 @@ function parseCalendarEntry(text) {
     }
     return {
       status: text.substring(beg + 'SUMMARY'.length + 1, text.indexOf('\n', beg)),
-      startTime: startTime,
-      endTime: endTime,
+      startTime: startTime.clone().tz("Europe/Stockholm"),
+      endTime: endTime.clone().tz("Europe/Stockholm"),
       isFullDayEntry: isFullDayEntry,
       ordering: ordering,
       location: location
