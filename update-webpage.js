@@ -231,8 +231,15 @@ function updateWebpage(now) {
   req.end();
 }
 
+function main() {
+  const now = moment();
+  downloadXKCD(now);
+  updateWebpage(now);
+}
+
 //
 // main
-const now = moment();
-downloadXKCD(now);
-updateWebpage(now);
+main();
+
+const wait_time = 5 * 60 * 1000;
+setInterval(main, wait_time);
