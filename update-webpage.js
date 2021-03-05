@@ -162,7 +162,7 @@ function downloadXKCD(now) {
           const imagePath = `https://imgs.xkcd.com/comics/${response.body.substring(imgBeg, imgEnd)}`;
           const ext = imagePath.substring(imagePath.length - 3);
 
-          const targetFile = TargetPath + 'xkcd.' + ext;
+          const targetFile = TargetPath + '/xkcd.' + ext;
           const file = fs.createWriteStream(targetFile);
           https.get(imagePath, res => res.pipe(file));
 
