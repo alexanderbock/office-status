@@ -19,7 +19,7 @@ const TargetPath = ConfigFile['target-path'];
 // entry
 function parseCalendarEntry(text) {
   function parseTime(token) {
-    const timeBeg = text.indexOf(token);
+    const timeBeg = text.lastIndexOf(token);
     const time = text.substring(timeBeg + token.length, text.indexOf('\n', timeBeg));
 
     let timeTZ = 'UTC';
@@ -32,10 +32,12 @@ function parseCalendarEntry(text) {
       // ones created in Fantastical)
     }
     else {
-      console.log(time.substring(0, 'TZID'.length));
-      console.log('ERROR parsing date for data: ', text);
+      console.error(time.substring(0, 'TZID'.length));
+      console.error('ERROR parsing date for data: ', text);
     }
-    const timeTime = time.substring(time.indexOf(':') + 1);
+    let timeTime = time.substring(time.indexOf(':') + 1);
+    const today = moment().utc().format('YYYYMMDD')
+    timeTime = today + timeTime.substring('YYYYMMDD'.length);
     const timeMoment = moment.tz(timeTime, timeTZ);
     return timeMoment;
   }
@@ -83,6 +85,7 @@ function parseCalendarEntry(text) {
     else {
       ordering = 'other';
     }
+
     return {
       status: text.substring(beg + 'SUMMARY'.length + 1, text.indexOf('\n', beg)),
       startTime: startTime.clone().tz("Europe/Stockholm"),
