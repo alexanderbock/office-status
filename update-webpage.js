@@ -210,7 +210,11 @@ function updateWebpage(now) {
 
   const req = https.request(options, res => {
     res.setEncoding('utf8');
+    let body = '';
     res.on('data', chunk => {
+      body += chunk;
+    }).on('end', () => {
+      let chunk = body;
       const json = parser.parse(chunk);
 
       // Extract the calendar entry information
@@ -220,7 +224,9 @@ function updateWebpage(now) {
           // This is the case if the calendar only contains a single entry this day
           responses = [ responses ];
         }
-        const lst = responses.map(v => v['d:propstat']['d:prop']['cal:calendar-data']);
+        let lst = responses.map(v => v['d:propstat']['d:prop']['cal:calendar-data']);
+        lst = lst.filter(v => v != null);
+        
         const entries = lst.map(v => parseCalendarEntry(v));
         const sortedEntries = entries.sort(function(a,b) { return Number(a.startTime.format('HHmm')) > Number(b.startTime.format('HHmm')); });
         writeIndex(sortedEntries);
