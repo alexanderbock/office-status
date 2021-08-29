@@ -157,12 +157,12 @@ function downloadXKCD(now) {
         }
         else {
           const imageText = `Random XKCD (#${comicNumber})`;
+          const res = response.body.replace(/\n/g, "").replace(/\t/g, "");
 
-          // The missing / is because in some of the XKCD that line is split into two
-          const SearchString = 'Image URL (for hotlinking/embedding): https://imgs.xkcd.com/comics';
-          const imgBeg = response.body.indexOf(SearchString) + SearchString.length;
-          const imgEnd = response.body.indexOf('.', imgBeg) + '.png'.length;
-          const imagePath = `https://imgs.xkcd.com/comics/${response.body.substring(imgBeg, imgEnd)}`;
+          const SearchString = '<div id="comic"><img src="';
+          const imgBeg = res.indexOf(SearchString) + SearchString.length;
+          const imgEnd = res.indexOf('"', imgBeg);
+          const imagePath = `https:${res.substring(imgBeg, imgEnd)}`;
           const ext = imagePath.substring(imagePath.length - 3);
 
           const targetFile = TargetPath + '/xkcd.' + ext;
@@ -250,5 +250,5 @@ function main() {
 // main
 main();
 
-const wait_time = 5 * 60 * 1000;
-setInterval(main, wait_time);
+// const wait_time = 5 * 60 * 1000;
+// setInterval(main, wait_time);
