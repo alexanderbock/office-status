@@ -250,5 +250,5 @@ function main() {
 // main
 main();
 
-// const wait_time = 5 * 60 * 1000;
-// setInterval(main, wait_time);
+const wait_time = 5 * 60 * 1000;
+setInterval(main, wait_time);
