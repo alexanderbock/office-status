@@ -240,9 +240,9 @@ function updateWebpage(now) {
         }
         let lst = responses.map(v => v['d:propstat']['d:prop']['cal:calendar-data']);
         lst = lst.filter(v => v != null);
-        
+
         const entries = lst.map(v => parseCalendarEntry(v));
-        const sortedEntries = entries.sort(function(a,b) { return Number(a.startTime.format('HHmm')) > Number(b.startTime.format('HHmm')); });
+        const sortedEntries = entries.sort((a,b) => a.startTime - b.startTime);
         writeIndex(sortedEntries);
       }
       else {
