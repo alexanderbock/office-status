@@ -18,84 +18,97 @@ const TargetPath = ConfigFile['target-path'];
 // Given a CalDAV entry, it returns the starting time, ending time, and the summary of the
 // entry
 function parseCalendarEntry(text) {
-  function parseTime(token) {
-    const timeBeg = text.lastIndexOf(token);
-    const time = text.substring(timeBeg + token.length, text.indexOf('\n', timeBeg));
-
+  function parseTime(line) {
     let timeTZ = 'UTC';
-    if (time.substring(0, 'TZID'.length) == 'TZID') {
+    let isFullDay = false;
+    if (line.startsWith('TZID')) {
       // If we have a regular entry, the first value is going to be the timezone identifier
-      timeTZ = time.substring('TZID='.length, time.indexOf(':'));
+      timeTZ = line.substring('TZID='.length, line.indexOf(':'));
     }
-    else if (time.substring(0, 'VALUE'.length) == 'VALUE') {
+    else if (line.startsWith('VALUE')) {
       // We have a full day entry, so there is no timezone identifier (at least in the
       // ones created in Fantastical)
+      isFullDay = true;
     }
     else {
-      console.error(time.substring(0, 'TZID'.length));
-      console.error('ERROR parsing date for data: ', text);
+      console.error(line.substring(0, 'TZID'.length));
+      console.error('ERROR parsing date for data: ', line);
     }
-    let timeTime = time.substring(time.indexOf(':') + 1);
-    const today = moment().utc().format('YYYYMMDD')
-    timeTime = today + timeTime.substring('YYYYMMDD'.length);
-    const timeMoment = moment.tz(timeTime, timeTZ);
-    return timeMoment;
-  }
-
-  function parseLocation() {
-    // Need to check against \nLOCATION: instead of LOCATION: as there might be another
-    // key that has LOCATION as the last word; particularly 'X-LIC-LOCATION'
-    const beg = text.indexOf('\nLOCATION:');
-    if (beg == -1) {
-      return null;
-    }
-    else {
-      const end = text.indexOf('\n', beg + '\nLOCATION'.length);
-      const location = text.substring(beg + '\nLOCATION'.length + 1, end);
-      return location;
-    }
-  }
-
-  const beg = text.indexOf('SUMMARY:');
-  if (beg == -1) {
-    // We got a value back that did not contain a SUMMARY list
-    return null;
-  }
-  else {
-    const location = parseLocation();
-    const startTime = parseTime('DTSTART;');
-    const endTime = parseTime('DTEND;');
-
-    // Checking whether the entry is a full day entry.  The way this is stored in the
-    // calendar heavily depends on the calendar application that was used to create the
-    // entry as the CalDAV standard is quiet about full day events.  Fantastical stores
-    // them as events lasting from 00:00 of day i to 00:00 of day i+1
-    const startDay = startTime.format('DD');
-    const startHourMinute = startTime.format('HH:mm');
-    const endDay = endTime.format('DD');
-    const endHourMinute = endTime.format('HH:mm');
-    const isFullDayEntry = (parseInt(startDay) !== parseInt(endDay)) &&
-                           (startHourMinute === endHourMinute);
-
-    let ordering;
-    const now = moment();
-    if (now >= startTime && now <= endTime) {
-      ordering = 'current';
-    }
-    else {
-      ordering = 'other';
-    }
-
+    // Get the date, but then remove the day component as that might be different
+    let time = line.substring(line.indexOf(':') + 1).substring('YYYYMMDD'.length);
+    // Attach the day component of today to the hhmmss of the event
+    const timeMoment = moment.tz(moment().utc().format('YYYYMMDD') + time, timeTZ);
     return {
-      status: text.substring(beg + 'SUMMARY'.length + 1, text.indexOf('\n', beg)),
-      startTime: startTime.clone().tz("Europe/Stockholm"),
-      endTime: endTime.clone().tz("Europe/Stockholm"),
-      isFullDayEntry: isFullDayEntry,
-      ordering: ordering,
-      location: location
+      datetime: timeMoment,
+      fullDay: isFullDay
     };
   }
+
+  const lines = text.split('\n');
+
+  let events = [];
+  let event = {};
+  let inEvent = false;
+  for (let i = 0; i < lines.length; i += 1) {
+    let line = lines[i];
+    if (!inEvent) {
+      if (line == "BEGIN:VEVENT")  inEvent = true;
+      continue;
+    }
+
+    if (line == "END:VEVENT") {
+      events.push(event);
+      event = {};
+      inEvent = false;
+      continue;
+    }
+
+    if (line.startsWith('DTSTART;')) {
+      event['start'] = parseTime(line.substr('DTSTART;'.length));
+    }
+
+    if (line.startsWith('DTEND;')) {
+      event['end'] = parseTime(line.substr('DTEND;'.length));
+    }
+
+    if (line.startsWith('SUMMARY:')) {
+      event['summary'] = line.substring('SUMMARY:'.length);
+    }
+
+    if (line.startsWith('LOCATION:')) {
+      event['location'] = line.substr('LOCATION:'.length);
+    }
+
+    if (line.startsWith('LAST-MODIFIED:')) {
+      event['modified'] = moment.tz(line.substring('LAST-MODIFIED:'.length), 'UTC');
+    }
+  }
+
+  // There might be many events for the same *actual* event, they are in random order but
+  // do have a modified date. So we can sort by the modified date and just take the first
+  // one and discard the rest
+  events.sort((lhs, rhs) => rhs.modified - lhs.modified);
+  let e = events[0];
+
+  let ordering;
+  const now = moment();
+  if (now >= e.start.datetime && now <= e.end.datetime) {
+    ordering = 'current';
+  }
+  else {
+    ordering = 'other';
+  }
+
+  return {
+    status: e.summary,
+    startTime: e.start.datetime.clone().tz("Europe/Stockholm"),
+    endTime: e.end.datetime.clone().tz("Europe/Stockholm"),
+    isFullDayEntry: e.start.fullDay && e.end.fullDay,
+    ordering: ordering,
+    location: e.location
+  };
 }
+
 
 function writeIndex(statuses) {
   const SourceFile = 'template.html';
@@ -115,7 +128,8 @@ function writeIndex(statuses) {
       const start = e.startTime.format('HH:mm');
       const end = e.endTime.format('HH:mm');
       if (e.isFullDayEntry) {
-        result += `<td class="status fullday">${e.status}</td>`;
+        result += `<td class="time">All-day</td>`;
+        result += `<td class="status">${e.status}</td>`;
         result += `<td class="location">${location}</td>`;
         result += `</tr>`;
         status += result;
