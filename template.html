@@ -27,7 +27,6 @@
       
       div.heading {
         color: var(--main-color);
-        
       }
 
       div#room {
@@ -56,7 +55,7 @@
       
       div.title {
         font-size: 48px;
-        margin-bottom: calc(2.0 * var(--main-margin));
+        margin-bottom: calc(var(--main-margin));
       }
 
       div.status {
@@ -94,8 +93,8 @@
       div.timestamp {
         font-size: 18px;
         position: fixed;
-        bottom: 0;
-        right: 0;
+        bottom: 5px;
+        right: 5px;
       }
 
       div.content {
@@ -109,23 +108,65 @@
         height: auto;
         width: auto;
       }
+
+      div.meeting {
+        display: none;
+
+        background-color: #cd3030;
+
+        border: 3px solid #000000;
+
+        font-size: 96px;
+        text-align: center;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+
+        width: 100%;
+        height: 125px;
+      }
     </style>
+
+    <script>
+      function updateMeetingDiv() {
+        fetch('http://home.alexanderbock.eu:50080/office-status/in-meeting')
+          .then(response => response.json())
+          .then(data => {
+            if (data.status) {
+              // Currently in a meeting
+              document.getElementsByClassName("meeting")[0].style.display = "block";
+              document.getElementsByClassName("content")[0].style.margin = "0 0 125px 0";
+              document.getElementsByClassName("timestamp")[0].style.margin = "0 0 125px 0";
+            }
+            else {
+              // Currently not in a meeting
+              document.getElementsByClassName("meeting")[0].style.display = "none";
+              document.getElementsByClassName("content")[0].style.margin = "0 0 0 0";
+              document.getElementsByClassName("timestamp")[0].style.margin = "0 0 0 0";
+            }
+          });
+      }
+
+      updateMeetingDiv();
+      setInterval(updateMeetingDiv, 5000);
+    </script>
 
     <meta http-equiv="refresh" content="300" />
   </head>
+
   <body>
-  <div class="heading" id="room">2033</div>
-  <hr class="main" />
-  <!-- <div class="heading" id="department">ITN</div> -->
-  <div class="heading" id="division">Medie- och Informationsteknik</div>
-  <div class="group">Vetenskaplig Visualisering</div>
-  <hr class="main" />
-  <div class="name">Alexander Bock</div>
-  <div class="title">Bitr&auml;dande universitetslektor</div>
-  <hr class="second" />
-  <div class="status">%%%STATUS%%%</div>
-  <div class="content">%%%CONTENT-TEXT%%% <br /> <img src="%%%CONTENT%%%" /> </div>
-  <div class="timestamp">%%%TIMESTAMP%%%</div>
+    <div class="heading" id="room">2033</div>
+    <hr class="main" />
+    <div class="heading" id="division">Medie- och Informationsteknik</div>
+    <div class="group">Vetenskaplig Visualisering</div>
+    <hr class="main" />
+    <div class="name">Alexander Bock</div>
+    <div class="title">Bitr&auml;dande universitetslektor</div>
+    <hr class="second" />
+    <div class="status">%%%STATUS%%%</div>
+    <div class="content">%%%CONTENT-TEXT%%% <br /> <img src="%%%CONTENT%%%" /> </div>
+    <div class="timestamp">%%%TIMESTAMP%%%</div>
+    <div class="meeting">Currently in a meeting</div>
   </body>
 </html>
 

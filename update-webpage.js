@@ -158,12 +158,12 @@ function writeIndex(statuses) {
   fs.renameSync(TargetFile, TargetPath + '/' + TargetFile);
 }
 
-function downloadXKCD(now) {
+function downloadXKCD(time) {
   // If the previous download is more than a day old, download a new file. This download will
   // probably take longer than the other parts of this file, so the first update of the day
   // might still use the old XKCD image, but who cares
-  if (now >= moment(XKCD.date).add(1, 'day')) {
-      console.log(`Downloading new XKCD. Now: ${now.format('YYYYMMDD')}, Previous: ${XKCD.date}`);
+  if (time >= moment(XKCD.date).add(1, 'day')) {
+      console.log(`Downloading new XKCD. Now: ${time.format('YYYYMMDD')}, Previous: ${XKCD.date}`);
       request('https://c.xkcd.com/random/comic/', (error, response, body) => {
         const comicNumber = response.request.href.substring('https://xkcd.com/'.length).slice(0, -1);
         if (ConfigFile['xkcd-skip'].includes(comicNumber)) {
@@ -195,9 +195,9 @@ function downloadXKCD(now) {
   }
 }
 
-function updateWebpage(now) {
+async function updateWebpage(time) {
   // Trigger the update of the webpage
-  const today = now.utc().format('YYYYMMDD');
+  const today = time.utc().format('YYYYMMDD');
   const msg = `
   <c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
     <d:prop> <d:getetag /> <c:calendar-data /> </d:prop>
@@ -222,47 +222,61 @@ function updateWebpage(now) {
     }
   };
 
-  const req = https.request(options, res => {
-    res.setEncoding('utf8');
-    let body = '';
-    res.on('data', chunk => {
-      body += chunk;
-    }).on('end', () => {
-      let chunk = body;
-      const json = parser.parse(chunk);
-
-      // Extract the calendar entry information
-      let responses = json['d:multistatus']['d:response'];
-      if (responses) {
-        if (!Array.isArray(responses)) {
-          // This is the case if the calendar only contains a single entry this day
-          responses = [ responses ];
+  return await new Promise((resolve, reject) => {
+    const req = https.request(options, res => {
+      res.setEncoding('utf8');
+      let body = '';
+      res.on('data', chunk => {
+        body += chunk;
+      }).on('end', () => {
+        let chunk = body;
+        const json = parser.parse(chunk);
+  
+        // Extract the calendar entry information
+        let responses = json['d:multistatus']['d:response'];
+        if (responses) {
+          if (!Array.isArray(responses)) {
+            // This is the case if the calendar only contains a single entry this day
+            responses = [ responses ];
+          }
+          let lst = responses.map(v => v['d:propstat']['d:prop']['cal:calendar-data']);
+          lst = lst.filter(v => v != null);
+  
+          const entries = lst.map(v => parseCalendarEntry(v));
+          const sortedEntries = entries.sort((a,b) => a.startTime - b.startTime);
+          resolve(sortedEntries);
         }
-        let lst = responses.map(v => v['d:propstat']['d:prop']['cal:calendar-data']);
-        lst = lst.filter(v => v != null);
-
-        const entries = lst.map(v => parseCalendarEntry(v));
-        const sortedEntries = entries.sort((a,b) => a.startTime - b.startTime);
-        writeIndex(sortedEntries);
-      }
-      else {
-        writeIndex(null);
-      }
+        else {
+          resolve(null);
+        }
+      }).on('error', (error) => {
+        reject(error);
+      });
     });
+    req.write(msg);
+    req.end();
   });
-  req.write(msg);
-  req.end();
 }
 
-function main() {
-  const now = moment();
+async function main(now) {
+  if (now == null)  now = moment();
+  // const now = moment().add(2, 'days');
+  let results = await updateWebpage(now);
   downloadXKCD(now);
-  updateWebpage(now);
+  writeIndex(results);
 }
 
 //
 // main
-main();
+if (process.argv.length == 2) {
+  // No additional arguments passed
+  main();
 
-const wait_time = 5 * 60 * 1000;
-setInterval(main, wait_time);
+  const wait_time = 5 * 60 * 1000;
+  setInterval(main, wait_time);
+}
+else {
+  const date = moment(process.argv[2]);
+  main(date);
+}
+
