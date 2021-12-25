@@ -79,6 +79,11 @@ function parseCalendarEntry(text) {
       event['location'] = line.substr('LOCATION:'.length);
     }
 
+    if (line.startsWith('DESCRIPTION:')) {
+      let desc = line.substr('DESCRIPTION'.length);
+      event['marked'] = desc.includes("#status");
+    }
+
     if (line.startsWith('LAST-MODIFIED:')) {
       event['modified'] = moment.tz(line.substring('LAST-MODIFIED:'.length), 'UTC');
     }
@@ -105,7 +110,8 @@ function parseCalendarEntry(text) {
     endTime: e.end.datetime.clone().tz("Europe/Stockholm"),
     isFullDayEntry: e.start.fullDay && e.end.fullDay,
     ordering: ordering,
-    location: e.location
+    location: e.location,
+    marked: e.marked
   };
 }
 
@@ -195,7 +201,7 @@ function downloadXKCD(time) {
   }
 }
 
-async function updateWebpage(time) {
+async function updateWebpage(time, calendar) {
   // Trigger the update of the webpage
   const today = time.utc().format('YYYYMMDD');
   const msg = `
@@ -213,7 +219,7 @@ async function updateWebpage(time) {
   const options = {
     hostname: ConfigFile['hostname'],
     port: ConfigFile['port'],
-    path: ConfigFile['path'],
+    path: ConfigFile['path'] + '/' + calendar,
     method: 'REPORT',
     headers: {
       'Content-Type': 'text/xml',
@@ -243,8 +249,7 @@ async function updateWebpage(time) {
           lst = lst.filter(v => v != null);
   
           const entries = lst.map(v => parseCalendarEntry(v));
-          const sortedEntries = entries.sort((a,b) => a.startTime - b.startTime);
-          resolve(sortedEntries);
+          resolve(entries);
         }
         else {
           resolve(null);
@@ -260,8 +265,15 @@ async function updateWebpage(time) {
 
 async function main(now) {
   if (now == null)  now = moment();
-  // const now = moment().add(2, 'days');
-  let results = await updateWebpage(now);
+  let results = [];
+  for (let idx in ConfigFile["calendars"]) {
+    let cal = ConfigFile["calendars"][idx];
+    let r = await updateWebpage(now, cal);
+    results = results.concat(r);
+  }
+  results = results.filter((e) => e.marked);
+  results = results.sort((a,b) => a.startTime - b.startTime);
+
   downloadXKCD(now);
   writeIndex(results);
 }
