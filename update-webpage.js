@@ -122,7 +122,7 @@ function writeIndex(statuses) {
 
   let template = fs.readFileSync(SourceFile, 'utf8');
 
-  if (statuses == null) {
+  if (statuses == null || statuses.length === 0) {
     template = template.replace('%%%STATUS%%%', '¯\\_(ツ)_/¯');
   }
   else {
@@ -237,7 +237,7 @@ async function updateWebpage(time, calendar) {
       }).on('end', () => {
         let chunk = body;
         const json = parser.parse(chunk);
-  
+
         // Extract the calendar entry information
         let responses = json['d:multistatus']['d:response'];
         if (responses) {
@@ -247,7 +247,7 @@ async function updateWebpage(time, calendar) {
           }
           let lst = responses.map(v => v['d:propstat']['d:prop']['cal:calendar-data']);
           lst = lst.filter(v => v != null);
-  
+
           const entries = lst.map(v => parseCalendarEntry(v));
           resolve(entries);
         }
@@ -271,7 +271,8 @@ async function main(now) {
     let r = await updateWebpage(now, cal);
     results = results.concat(r);
   }
-  results = results.filter((e) => e.marked);
+
+  results = results.filter((e) => e && e.marked);
   results = results.sort((a,b) => a.startTime - b.startTime);
 
   downloadXKCD(now);
