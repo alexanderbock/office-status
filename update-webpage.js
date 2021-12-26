@@ -81,7 +81,8 @@ function parseCalendarEntry(text) {
 
     if (line.startsWith('DESCRIPTION:')) {
       let desc = line.substr('DESCRIPTION'.length);
-      event['marked'] = desc.includes("#status");
+      let desc_lower = desc.toLowerCase();
+      event['marked'] = desc_lower.includes("#status");
     }
 
     if (line.startsWith('LAST-MODIFIED:')) {
