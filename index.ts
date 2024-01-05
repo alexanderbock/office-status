@@ -10,32 +10,36 @@ import xkcd from "./xkcd.json";
 
 const TargetPath = config["target-path"];
 
-interface Time {
-  datetime: moment.Moment,
-  fullDay: Boolean;
-};
-
 interface Event {
-  start?: Time;
-  startTime?: moment.Moment;
-  end?: Time;
-  endTime?: moment.Moment;
-  status?: string;
-  location?: string;
-  marked?: boolean;
-  modified?: moment.Moment;
-  isFullDayEntry?: Boolean;
-  ordering?: "current" | "other";
+  start: moment.Moment;
+  end: moment.Moment;
+  status: string;
+  location: string;
+  isMarked: boolean;
+  isFullDayEntry: boolean;
 }
 
 // Given a CalDAV entry, it returns the starting time, ending time, and the summary of the
 // entry
-function parseCalendarEntry(text: any): Event {
+function parseCalendarEntry(text: string): Event {
+  interface Time {
+    datetime: moment.Moment,
+    fullDay: boolean;
+  };
+  interface EventStub {
+    start?: Time;
+    end?: Time;
+    status?: string;
+    location?: string;
+    isMarked?: boolean;
+    modified?: moment.Moment;
+  };
+
   function parseTimeLine(line: string) {
     let timeTZ = "UTC";
     let isFullDay = false;
     if (line.startsWith("TZID")) {
-      // If we have a regular entry, the first value is going to be the timezone identifier
+      // If we have a regular entry, the first value is the timezone identifier
       timeTZ = line.substring("TZID=".length, line.indexOf(":"));
     }
     else if (line.startsWith("VALUE")) {
@@ -62,30 +66,29 @@ function parseCalendarEntry(text: any): Event {
 
   const lines = text.split("\n");
 
-  let events: Event[] = [];
-  let event: Event = {};
-  let inEvent = false;
-  for (let i = 0; i < lines.length; i += 1) {
-    let line = lines[i];
+  let events: EventStub[] = [];
+  let event: EventStub | null = null;
+  for (let line of lines) {
+    // Remove trailing \n and \r
     line = line.trim();
-    if (!inEvent) {
-      if (line == "BEGIN:VEVENT")  inEvent = true;
+
+    if (event == null) {
+      if (line == "BEGIN:VEVENT")  event = {};
       continue;
     }
 
     if (line == "END:VEVENT") {
       events.push(event);
-      event = {};
-      inEvent = false;
+      event = null;
       continue;
     }
 
     if (line.startsWith("DTSTART:") || line.startsWith("DTSTART;")) {
-      event.start = parseTimeLine(line.substr("DTSTART:".length));
+      event.start = parseTimeLine(line.substring("DTSTART:".length));
     }
 
     if (line.startsWith("DTEND:") || line.startsWith("DTEND;")) {
-      event.end = parseTimeLine(line.substr("DTEND:".length));
+      event.end = parseTimeLine(line.substring("DTEND:".length));
     }
 
     if (line.startsWith("SUMMARY:")) {
@@ -93,13 +96,12 @@ function parseCalendarEntry(text: any): Event {
     }
 
     if (line.startsWith("LOCATION:")) {
-      event.location = line.substr("LOCATION:".length);
+      event.location = line.substring("LOCATION:".length);
     }
 
     if (line.startsWith("DESCRIPTION:")) {
-      let desc = line.substr("DESCRIPTION".length);
-      let desc_lower = desc.toLowerCase();
-      event.marked = desc_lower.includes("#status");
+      let description = line.substring("DESCRIPTION".length);
+      event.isMarked = description.toLowerCase().includes("#status");
     }
 
     if (line.startsWith("LAST-MODIFIED:")) {
@@ -110,32 +112,24 @@ function parseCalendarEntry(text: any): Event {
   // There might be many events for the same *actual* event, they are in random order but
   // do have a modified date. So we can sort by the modified date and just take the first
   // one and discard the rest
-  events.sort(function (lhs, rhs) {
-    if (lhs.modified == null || rhs.modified == null)  throw "@TMP Error";
-    return +rhs.modified - +lhs.modified
-  });
+  events.sort((lhs, rhs) => +rhs.modified! - +lhs.modified!);
 
   let e = events[0];
-  if (e == undefined)  throw "@TMP Error2";
-  if (e.start == undefined || e.end == undefined)  throw "@TMP Error3";
-
-  let ordering: "current" | "other";
-  const now = moment();
-  if (now >= e.start.datetime && now <= e.end.datetime) {
-    ordering = "current";
-  }
-  else {
-    ordering = "other";
+  if (e == undefined || e.start == undefined || e.end == undefined ||
+      e.status == undefined || e.modified == undefined)
+  {
+    console.error(lines);
+    console.error(event);
+    throw "Error parsing event";
   }
 
   return {
     status: e.status || "",
-    startTime: e.start.datetime.clone().tz("Europe/Stockholm"),
-    endTime: e.end.datetime.clone().tz("Europe/Stockholm"),
+    start: e.start.datetime.clone().tz("Europe/Stockholm"),
+    end: e.end.datetime.clone().tz("Europe/Stockholm"),
     isFullDayEntry: e.start.fullDay && e.end.fullDay,
-    ordering: ordering,
     location: e.location || "",
-    marked: e.marked || false
+    isMarked: e.isMarked || false
   };
 }
 
@@ -150,29 +144,29 @@ function writeIndex(statuses: Event[]) {
     template = template.replace("%%%STATUS%%%", "¯\\_(ツ)_/¯");
   }
   else {
+    const now = moment();
+
     let status = `<table class="entries">`;
     statuses.forEach(e => {
-      if (e.startTime == undefined || e.endTime == undefined)  throw "@TMP Error 3";
+      const location = e.location;
 
-      const location = e.location || "";
-
-      let result = `<tr class="entry" id="${e.ordering}">`;
-      const start = e.startTime.format("HH:mm");
-      const end = e.endTime.format("HH:mm");
+      let highlight = (now >= e.start && now <= e.end) ? "current" : "other";
+      let result = `<tr class="entry" id="${highlight}">`;
       if (e.isFullDayEntry) {
         result += `<td class="time">All-day</td>`;
         result += `<td class="status">${e.status}</td>`;
         result += `<td class="location">${location}</td>`;
         result += `</tr>`;
-        status += result;
       }
       else {
+        const start = e.start.format("HH:mm");
+        const end = e.end.format("HH:mm");
         result += `<td class="time">(${start}&ndash;${end})</td>`;
         result += `<td class="status">${e.status}</td>`;
         result += `<td class="location">${location}</td>`;
         result += `</tr>`;
-        status += result;
       }
+      status += result;
     });
     status += "</table>";
     template = template.replace("%%%STATUS%%%", status);
@@ -181,7 +175,10 @@ function writeIndex(statuses: Event[]) {
   template = template.replace("%%%CONTENT-TEXT%%%", `Random XKCD (#${xkcd.number})`);
   template = template.replace("%%%CONTENT%%%", xkcd.file);
 
-  template = template.replace("%%%TIMESTAMP%%%", `Last updated: ${moment().format("YYYY-MM-DD HH:mm:ss")}`);
+  template = template.replace(
+    "%%%TIMESTAMP%%%",
+    `Last updated: ${moment().format("YYYY-MM-DD HH:mm:ss")}`
+  );
   fs.writeFileSync(TargetFile, template, "utf8");
 
   if (fs.existsSync(`${TargetPath}/${TargetFile}`)) {
@@ -191,18 +188,21 @@ function writeIndex(statuses: Event[]) {
 }
 
 function downloadXKCD(time: any) {
-  // If the previous download is more than a day old, download a new file. This download will
-  // probably take longer than the other parts of this file, so the first update of the day
-  // might still use the old XKCD image, but who cares
+  // If the previous download is more than a day old, download a new file. This download
+  // will probably take longer than the other parts of this file, so the first update of
+  // the day might still use the old XKCD image, but who cares
   if (time >= moment(xkcd.date).add(1, "day")) {
-      console.log(`Downloading new XKCD. Now: ${time.format("YYYYMMDD")}, Previous: ${xkcd.date}`);
-      request("https://c.xkcd.com/random/comic/", (error: any, response: any, body: any) => {
+    console.log(
+      `Downloading new XKCD. Now: ${time.format("YYYYMMDD")}, Previous: ${xkcd.date}`
+    );
+    request(
+      "https://c.xkcd.com/random/comic/",
+      (response: any) => {
         const comicNumber = parseInt(response.request.href.substring("https://xkcd.com/".length).slice(0, -1));
         if (config["xkcd-skip"].includes(comicNumber)) {
           console.log(`Skipping comic ${comicNumber} due to blacklisting`);
         }
         else {
-          // const imageText = `Random XKCD (#${comicNumber})`;
           const res = response.body.replace(/\n/g, "").replace(/\t/g, "");
 
           const SearchString = `<div id="comic"><img src="`;
@@ -223,13 +223,12 @@ function downloadXKCD(time: any) {
           }
           fs.writeFileSync("xkcd.json", JSON.stringify(xkcd), "utf8");
         }
-      });
+      }
+    );
   }
 }
 
-async function main(now?: any) {
-  if (now == null)  now = moment();
-
+async function main(now: moment.Moment) {
   let fullPath = `https://${config.hostname}${config.path}`;
   const client = await tsdav.createDAVClient({
     serverUrl: fullPath,
@@ -250,32 +249,29 @@ async function main(now?: any) {
     return config.calendars.includes(name);
   });
 
+  let ba = 'Basic ' + Buffer.from(auth.username + ':' + auth.password).toString('base64');
   let results: Event[] = [];
   for (let calendar of calendars) {
     const today = now.utc().format("YYYY-MM-DD");
     let objects = await tsdav.fetchCalendarObjects({
       calendar: calendar,
       headers: {
-        authorization: 'Basic ' + Buffer.from(auth.username + ':' + auth.password).toString('base64')
+        authorization: ba
       },
       timeRange: {
-        start: `${today}T00:00:00+01:00`,
-        end: `${today}T23:59:59+01:00`
-      },
-      expand: true
+        start: `${today}T00:00:00`,
+        end: `${today}T24:00:00`
+      }
     })
 
-    for (let o of objects) {
-      let result = parseCalendarEntry(o.data);
+    for (let obj of objects) {
+      let result = parseCalendarEntry(obj.data);
       results.push(result);
     }
   }
 
-  results = results.filter((e) => e && e.marked);
-  results = results.sort(function(a,b) {
-    if (a.startTime == undefined || b.startTime == undefined)  throw "@TMP  Error 4";
-    return +a.startTime - +b.startTime
-  });
+  results = results.filter((e) => e && e.isMarked);
+  results = results.sort((a,b) => +a.start - +b.start);
 
   downloadXKCD(now);
   writeIndex(results);
@@ -287,12 +283,21 @@ async function main(now?: any) {
 // main
 if (process.argv.length == 2) {
   // No additional arguments passed
-  main();
+  main(moment());
 
-  // const wait_time = 5 * 60 * 1000;
-  // setInterval(main, wait_time);
+  const wait_time = 5 * 60 * 1000;
+  setInterval(main, wait_time);
 }
 else {
-  const date = moment(process.argv[2]);
-  main(date);
+  if (process.argv[2] == "once") {
+    main(moment());
+  }
+  else if (process.argv[2] == "test") {
+    const date = moment("1985-08-27 12:00:00");
+    main(date);
+  }
+  else {
+    const date = moment(process.argv[2]);
+    main(date);
+  }
 }
