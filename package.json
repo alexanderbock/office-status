@@ -9,9 +9,13 @@
   "author": "Alexander Bock",
   "license": "BSD 2-clause",
   "dependencies": {
-    "fast-xml-parser": "^4.2.4",
     "moment-timezone": "^0.5.35",
     "request": "^2.88.0",
+    "tsdav": "^2.0.7",
     "xml2js": "^0.4.22"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.6",
+    "@types/request": "^2.48.12"
   }
 }
