@@ -197,7 +197,7 @@ function downloadXKCD(time: any) {
     );
     request(
       "https://c.xkcd.com/random/comic/",
-      (response: any) => {
+      (error: any, response: any, body: any) => {
         const comicNumber = parseInt(response.request.href.substring("https://xkcd.com/".length).slice(0, -1));
         if (config["xkcd-skip"].includes(comicNumber)) {
           console.log(`Skipping comic ${comicNumber} due to blacklisting`);
