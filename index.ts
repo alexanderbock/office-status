@@ -228,7 +228,9 @@ function downloadXKCD(time: any) {
   }
 }
 
-async function main(now: moment.Moment) {
+async function main(now?: moment.Moment) {
+  if (now == undefined)  now = moment();
+
   let fullPath = `https://${config.hostname}${config.path}`;
   const client = await tsdav.createDAVClient({
     serverUrl: fullPath,
@@ -283,14 +285,14 @@ async function main(now: moment.Moment) {
 // main
 if (process.argv.length == 2) {
   // No additional arguments passed
-  main(moment());
+  main();
 
   const wait_time = 5 * 60 * 1000;
   setInterval(main, wait_time);
 }
 else {
   if (process.argv[2] == "once") {
-    main(moment());
+    main();
   }
   else if (process.argv[2] == "test") {
     const date = moment("1985-08-27 12:00:00");
