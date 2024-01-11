@@ -183,6 +183,7 @@ function writeIndex(statuses: Event[]) {
   template = template.replace("%%%CONTENT%%%", xkcd.file);
   template = template.replace("%%%MEETING-URL%%%", config["meeting-url"]);
 
+  template = template.replace("%%%INFO-ROOM%%%", config.info.room);
   template = template.replace("%%%INFO-DIVISION%%%", config.info.division);
   template = template.replace("%%%INFO-GROUP%%%", config.info.group);
   template = template.replace("%%%INFO-NAME%%%", config.info.name);
