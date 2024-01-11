@@ -181,7 +181,9 @@ function writeIndex(statuses: Event[]) {
 
   template = template.replace("%%%CONTENT-TEXT%%%", `Random XKCD (#${xkcd.number})`);
   template = template.replace("%%%CONTENT%%%", xkcd.file);
+
   template = template.replace("%%%MEETING-URL%%%", config["meeting-url"]);
+  template = template.replace("%%%FOCUS-URL%%%", config["focus-url"]);
 
   template = template.replace("%%%INFO-ROOM%%%", config.info.room);
   template = template.replace("%%%INFO-DIVISION%%%", config.info.division);

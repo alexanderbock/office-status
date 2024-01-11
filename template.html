@@ -125,6 +125,23 @@
         width: 100%;
         height: 125px;
       }
+
+      div.focus {
+        display: none;
+
+        background-color: #3086cd;
+
+        border: 3px solid #000000;
+
+        font-size: 96px;
+        text-align: center;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+
+        width: 100%;
+        height: 125px;
+      }
     </style>
 
     <script>
@@ -147,8 +164,34 @@
           });
       }
 
-      updateMeetingDiv();
-      setInterval(updateMeetingDiv, 5000);
+      function updateFocusDiv() {
+        fetch("%%%FOCUS-URL%%%")
+          .then(response => response.json())
+          .then(data => {
+            if (data.status) {
+              // Currently focussing
+              document.getElementsByClassName("focus")[0].style.display = "block";
+              document.getElementsByClassName("content")[0].style.margin = "0 0 125px 0";
+              document.getElementsByClassName("timestamp")[0].style.margin = "0 0 125px 0";
+            }
+            else {
+              // Currently focussing
+              document.getElementsByClassName("focus")[0].style.display = "none";
+              document.getElementsByClassName("content")[0].style.margin = "0 0 0 0";
+              document.getElementsByClassName("timestamp")[0].style.margin = "0 0 0 0";
+            }
+          });
+      }
+
+      if ("%%%MEETING-URL%%%" !== "") {
+        updateMeetingDiv();
+        setInterval(updateMeetingDiv, 5000);
+      }
+
+      if ("%%%FOCUS-URL%%%" !== "") {
+        updateFocusDiv();
+        setInterval(updateFocusDiv, 5000);
+      }
     </script>
 
     <meta http-equiv="refresh" content="300" />
@@ -167,6 +210,7 @@
     <div class="content">%%%CONTENT-TEXT%%% <br /> <img src="%%%CONTENT%%%" /> </div>
     <div class="timestamp">%%%TIMESTAMP%%%</div>
     <div class="meeting">Currently in a meeting</div>
+    <div class="focus">Focussing — Please Do not Disturb</div>
   </body>
 </html>
 
