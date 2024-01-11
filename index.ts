@@ -32,6 +32,7 @@ function parseCalendarEntry(text: string): Event {
     status?: string;
     location?: string;
     isMarked?: boolean;
+    isAnonymous?: boolean;
     modified?: moment.Moment;
   };
 
@@ -102,6 +103,7 @@ function parseCalendarEntry(text: string): Event {
     if (line.startsWith("DESCRIPTION:")) {
       let description = line.substring("DESCRIPTION".length);
       event.isMarked = description.toLowerCase().includes("#status");
+      event.isAnonymous = description.toLowerCase().includes("#anon");
     }
 
     if (line.startsWith("LAST-MODIFIED:")) {
@@ -121,6 +123,11 @@ function parseCalendarEntry(text: string): Event {
     console.error(lines);
     console.error(event);
     throw "Error parsing event";
+  }
+
+  if (e.isAnonymous) {
+    e.status = "Busy";
+    e.location = "";
   }
 
   return {
@@ -174,6 +181,12 @@ function writeIndex(statuses: Event[]) {
 
   template = template.replace("%%%CONTENT-TEXT%%%", `Random XKCD (#${xkcd.number})`);
   template = template.replace("%%%CONTENT%%%", xkcd.file);
+  template = template.replace("%%%MEETING-URL%%%", config["meeting-url"]);
+
+  template = template.replace("%%%INFO-DIVISION%%%", config.info.division);
+  template = template.replace("%%%INFO-GROUP%%%", config.info.group);
+  template = template.replace("%%%INFO-NAME%%%", config.info.name);
+  template = template.replace("%%%INFO-TITLE%%%", config.info.title);
 
   template = template.replace(
     "%%%TIMESTAMP%%%",

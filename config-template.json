@@ -4,5 +4,12 @@
   "path": "",
   "calendars": [],
   "target-path": "",
-  "xkcd-skip": [ ]
+  "xkcd-skip": [],
+  "meeting-url": "",
+  "info": {
+    "division": "",
+    "group": "",
+    "name": "",
+    "title": ""
+  }
 }

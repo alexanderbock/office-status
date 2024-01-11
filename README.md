@@ -1,8 +1,7 @@
 # Office Status
-A script that will generate a webpage used as a replacement for a fixed plate at the office to inform people where you are.  Everytime the script is run, it will get the events in the specified calendars via a CalDAV request and use these 
-values to populate the plate.  It will also download a random XKCD image once per day and inject that into the plate.
+A script that will generate a webpage used as a replacement for a fixed plate at the office to inform people where you are.  Everytime the script is run, it will get the events in the specified calendars via a CalDAV request and use these values to populate the plate.  It will also download a random XKCD image once per day and inject that into the plate.
 
-Everytime the script runs, it will get all of the calendar entries for the current day from all calendars named in the `config.json` and will then display all of the ones that mention the string `#Status` in their description.  If a calendar entry does not have that text, it will be ignored.
+Everytime the script runs, it will get all of the calendar entries for the current day from all calendars named in the `config.json` and will then display all of the ones that mention the string `#status` in their description.  If a calendar entry does not have that text, it will be ignored.  If a calendar entry contains the string `#anon` in the description, the plate will should "Busy" as the entry and will remove the location before displaying the entry.
 
 ## Configuration
 1. Edit the `config.json`
@@ -11,6 +10,7 @@ Everytime the script runs, it will get all of the calendar entries for the curre
    - `xkcd-skip` is a list of XKCD comic numbers that should be skipped.  Currently used to ignore NSFW comics
    - `calendars` the names of the calendars from which the entries should be loaded
    - `meeting-url` the page will query this URL to see if the "Current in Meeting" banner should be shown. The URL should return a JSON object of the form `{ status: Boolean }`; if `status` is `true`, the banner is shown, if it is `false`, it will be hidden
+   - `info` is an object that contains the personal information that is displayed at the top of the page and must contain the keys `division`, `group`, `name`, and `title`
 1. Create an `auth.json` with the authentication information
    - `username` should be the username used to access the CalDAV endpoint
    - `passwort` should be the password used to access the CalDAV endpoint
