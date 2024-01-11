@@ -2,6 +2,7 @@
   "hostname": "",
   "port": 0,
   "path": "",
+  "calendars": [],
   "target-path": "",
   "xkcd-skip": [ ]
 }
