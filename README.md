@@ -1,3 +1,4 @@
+# Office Status
 A script that will generate a webpage used as a replacement for a fixed plate at the office to inform people where you are.  Everytime the script is run, it will get the events in the specified calendars via a CalDAV request and use these 
 values to populate the plate.  It will also download a random XKCD image once per day and inject that into the plate.
 
