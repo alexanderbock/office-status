@@ -1,9 +1,7 @@
-.update-webpage.js.swp
-auth.json
-config.json
-xkcd.json
 node_modules/
 
+src/auth.json
+src/config.json
+src/xkcd.json
 public
 out
-dist

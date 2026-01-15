@@ -1,9 +1,9 @@
 {
+  "hostingPort": 0,
   "hostname": "",
   "port": 0,
   "path": "",
   "calendars": [],
-  "target-path": "",
   "xkcd-skip": [],
   "meeting-url": "",
   "focus-url": "",

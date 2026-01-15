@@ -8,8 +8,6 @@ import auth from "./auth.json";
 import config from "./config.json";
 import xkcd from "./xkcd.json";
 
-const TargetPath = config["target-path"];
-
 interface Event {
   start: moment.Moment;
   end: moment.Moment;
@@ -195,12 +193,7 @@ function writeIndex(statuses: Event[]) {
     "%%%TIMESTAMP%%%",
     `Last updated: ${moment().format("YYYY-MM-DD HH:mm:ss")}`
   );
-  fs.writeFileSync(TargetFile, template, "utf8");
-
-  if (fs.existsSync(`${TargetPath}/${TargetFile}`)) {
-    fs.unlinkSync(`${TargetPath}/${TargetFile}`);
-  }
-  fs.renameSync(TargetFile, `${TargetPath}/${TargetFile}`);
+  fs.writeFileSync(`./public/${TargetFile}`, template, "utf8");
 }
 
 function downloadXKCD(time: any) {
@@ -227,9 +220,9 @@ function downloadXKCD(time: any) {
           const imagePath = `https:${res.substring(imgBeg, imgEnd)}`;
           const ext = imagePath.substring(imagePath.length - 3);
 
-          const targetFile = `${TargetPath}/xkcd.${ext}`;
+          const targetFile = `./public/xkcd.${ext}`;
           const file = fs.createWriteStream(targetFile);
-          https.get(imagePath, res => res.pipe(file));
+          https.get(imagePath, res => res.pipe(file)).on('error', e => console.error(e));
 
           console.log(`Number: ${comicNumber}`, `Image: ${imagePath}`);
           const xkcd = {
@@ -237,14 +230,14 @@ function downloadXKCD(time: any) {
               file: `xkcd.${ext}`,
               number: comicNumber
           }
-          fs.writeFileSync("xkcd.json", JSON.stringify(xkcd), "utf8");
+          fs.writeFileSync("src/xkcd.json", JSON.stringify(xkcd), "utf8");
         }
       }
     );
   }
 }
 
-async function main(now?: moment.Moment) {
+export async function generate_page(now?: moment.Moment) {
   if (now == undefined)  now = moment();
 
   let fullPath = `https://${config.hostname}${config.path}`;
@@ -293,29 +286,4 @@ async function main(now?: moment.Moment) {
 
   downloadXKCD(now);
   writeIndex(results);
-}
-
-
-
-//
-// main
-if (process.argv.length == 2) {
-  // No additional arguments passed
-  main();
-
-  const wait_time = 5 * 60 * 1000;
-  setInterval(main, wait_time);
-}
-else {
-  if (process.argv[2] == "once") {
-    main();
-  }
-  else if (process.argv[2] == "test") {
-    const date = moment("1985-08-27 12:00:00");
-    main(date);
-  }
-  else {
-    const date = moment(process.argv[2]);
-    main(date);
-  }
 }
