@@ -6,7 +6,6 @@ import tsdav from "tsdav";
 
 import auth from "./auth.json";
 import config from "./config.json";
-import xkcd from "./xkcd.json";
 
 interface Event {
   start: moment.Moment;
@@ -143,6 +142,8 @@ function writeIndex(statuses: Event[]) {
   const SourceFile = "template.html";
   const TargetFile = "index.html";
 
+  const xkcd = JSON.parse(fs.readFileSync("xkcd.json", "utf-8"));
+
   let template = fs.readFileSync(SourceFile, "utf8");
 
   if (statuses == null || statuses.length === 0) {
@@ -197,6 +198,8 @@ function writeIndex(statuses: Event[]) {
 }
 
 function downloadXKCD(time: any) {
+  const xkcd = JSON.parse(fs.readFileSync("xkcd.json", "utf-8"));
+
   // If the previous download is more than a day old, download a new file. This download
   // will probably take longer than the other parts of this file, so the first update of
   // the day might still use the old XKCD image, but who cares
@@ -230,7 +233,7 @@ function downloadXKCD(time: any) {
               file: `xkcd.${ext}`,
               number: comicNumber
           }
-          fs.writeFileSync("src/xkcd.json", JSON.stringify(xkcd), "utf8");
+          fs.writeFileSync("xkcd.json", JSON.stringify(xkcd), "utf8");
         }
       }
     );
