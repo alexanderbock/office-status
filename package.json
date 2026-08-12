@@ -1,26 +1,23 @@
 {
   "name": "office-status",
-  "version": "1.0.0",
-  "description": "A script to generate an office plate that updates based on CalDAV requests",
-  "main": "update-webpage.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "version": "2.0.0",
+  "description": "An office plate webpage that updates based on CalDAV requests",
+  "private": true,
   "author": "Alexander Bock",
-  "license": "BSD 2-clause",
-  "dependencies": {
-    "cors": "^2.8.5",
-    "express": "^5.2.1",
-    "express-basic-auth": "^1.2.1",
-    "moment-timezone": "^0.5.35",
-    "request": "^2.88.0",
-    "tsdav": "^2.0.7",
-    "xml2js": "^0.4.22"
+  "license": "BSD-2-Clause",
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,magenta \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "npm run dev --workspace server",
+    "dev:client": "npm run dev --workspace client",
+    "build": "npm run build --workspace server && npm run build --workspace client",
+    "start": "npm run start --workspace server"
   },
   "devDependencies": {
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
-    "@types/node": "^20.10.6",
-    "@types/request": "^2.48.12"
+    "concurrently": "^9.1.2",
+    "typescript": "^5.7.2"
   }
 }

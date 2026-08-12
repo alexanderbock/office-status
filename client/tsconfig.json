@@ -1,13 +1,10 @@
 {
-  // 2024-01-04
-  // TS 5.3
-
   "compilerOptions": {
-    "target": "es2022",
-    "module": "node16",
-    "moduleResolution": "node16",
-    "rootDir": "src",
-    "outDir": "out",
+    "target": "ES2022",
+    "lib": [ "ES2022", "DOM", "DOM.Iterable" ],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
 
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,
@@ -15,15 +12,16 @@
     "noFallthroughCasesInSwitch": true,
     "noImplicitOverride": true,
     "noImplicitReturns": true,
-    "noPropertyAccessFromIndexSignature": true,
     "noUncheckedIndexedAccess": true,
     "strict": true,
     "useUnknownInCatchVariables": true,
 
+    "isolatedModules": true,
+    "moduleDetection": "force",
     "resolveJsonModule": true,
-    "noEmitOnError": true,
-    "removeComments": true,
-    "sourceMap": true,
-    // "lib": [ "dom", "ES2015" ]
-  }
+    "skipLibCheck": true,
+    "types": [ "vite/client" ],
+    "noEmit": true
+  },
+  "include": [ "src", "vite.config.ts" ]
 }

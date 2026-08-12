@@ -1,0 +1,132 @@
+:root {
+  --main-color: #252525;
+  --main-margin: 25px;
+}
+
+* {
+  cursor: none;
+  font-family: "KorolevLiU", sans-serif;
+}
+
+hr.main {
+  color: var(--main-color);
+  background-color: var(--main-color);
+  height: 15px;
+  margin-bottom: calc(0.75 * var(--main-margin));
+}
+
+hr.second {
+  color: #000000;
+  background-color: #000000;
+  height: 2.5px;
+  margin-bottom: var(--main-margin);
+}
+
+div.heading {
+  color: var(--main-color);
+}
+
+div#room {
+  font-size: 130px;
+  text-transform: uppercase;
+}
+
+div#department {
+  font-size: 120px;
+}
+
+div#division {
+  font-size: 80px;
+  font-variant: small-caps;
+  margin-bottom: calc(0.5 * var(--main-margin));
+}
+
+div.name {
+  font-size: 78px;
+}
+
+div.group {
+  font-size: 64px;
+}
+
+div.title {
+  font-size: 48px;
+  margin-bottom: calc(var(--main-margin));
+}
+
+div.status {
+  font-size: 68px;
+  font-style: italic;
+}
+
+table.entries {
+  width: 100%;
+}
+
+td.time {
+  width: 375px;
+}
+
+td.status {
+  width: calc(1080px - 375px - 150px);
+}
+
+td.location {
+  text-align: right;
+  width: 150px;
+}
+
+tr.other {
+  font-size: 40px;
+  font-style: italic;
+}
+
+tr.current {
+  font-size: 60px;
+  font-style: italic;
+}
+
+div.timestamp {
+  font-size: 18px;
+  position: fixed;
+  bottom: 5px;
+  right: 5px;
+}
+
+div.content {
+  position: fixed;
+  bottom: 10px;
+  left: 10px;
+}
+
+div.content > img {
+  max-height: 512px;
+  height: auto;
+  width: auto;
+}
+
+/* Lifts the content above a banner while one is shown */
+div.shifted {
+  margin: 0 0 125px 0;
+}
+
+div.banner {
+  border: 3px solid #000000;
+
+  font-size: 96px;
+  text-align: center;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+
+  width: 100%;
+  height: 125px;
+}
+
+div.banner.meeting {
+  background-color: #cd3030;
+}
+
+div.banner.focus {
+  background-color: #3086cd;
+}

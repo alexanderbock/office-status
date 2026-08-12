@@ -1,24 +1,42 @@
 # Office Status
-A script that will generate a webpage used as a replacement for a fixed plate at the office to inform people where you are.  Everytime the script is run, it will get the events in the specified calendars via a CalDAV request and use these values to populate the plate.  It will also download a random XKCD image once per day and inject that into the plate.
+A webpage used as a replacement for a fixed plate at the office to inform people where you are.  The server periodically fetches the events of the current day from the specified calendars via a CalDAV request and serves them as JSON; a React frontend renders the plate and refreshes itself.  A random XKCD image is downloaded once per day and shown at the bottom of the page.
 
-Everytime the script runs, it will get all of the calendar entries for the current day from all calendars named in the `config.json` and will then display all of the ones that mention the string `#status` in their description.  If a calendar entry does not have that text, it will be ignored.  If a calendar entry contains the string `#anon` in the description, the plate will should "Busy" as the entry and will remove the location before displaying the entry.
+Only calendar entries whose description mentions the string `#status` are displayed, all others are ignored.  If a calendar entry contains the string `#anon` in the description, the plate will show "Busy" as the entry and will remove the location before displaying the entry.
+
+## Structure
+The repository is an npm workspace with two packages:
+ - `server` fetches the calendar entries and the XKCD comic and exposes them through a JSON API.  It also serves the built frontend
+ - `client` is the Vite + React frontend that renders the plate
 
 ## Configuration
-1. Edit the `config.json`
-   - `hostname`, `port`, and `path` should point at the location where the CalDAV access point is loaded
-   - `target-path` is the location where the created webpage will be moved.  This path is relative to the location of the script
+1. Copy `config-template.json` to `config.json`
+   - `hostingPort` is the port on which the server listens
+   - `hostname` and `path` should point at the location where the CalDAV access point is loaded
    - `xkcd-skip` is a list of XKCD comic numbers that should be skipped.  Currently used to ignore NSFW comics
    - `calendars` the names of the calendars from which the entries should be loaded
-   - `meeting-url` the page will query this URL to see if the "Current in Meeting" banner should be shown. The URL should return a JSON object of the form `{ status: Boolean }`; if `status` is `true`, the banner is shown, if it is `false`, it will be hidden
-   - `info` is an object that contains the personal information that is displayed at the top of the page and must contain the keys `division`, `group`, `name`, and `title`
-1. Create an `auth.json` with the authentication information
+   - `info` is an object that contains the personal information that is displayed at the top of the page and must contain the keys `room`, `division`, `group`, `name`, and `title`
+1. Copy `auth-template.json` to `auth.json` and fill in the authentication information
    - `username` should be the username used to access the CalDAV endpoint
-   - `passwort` should be the password used to access the CalDAV endpoint
+   - `password` should be the password used to access the CalDAV endpoint
+   - `webpassword` is the password protecting the page itself and the shared secret used to toggle the meeting and focus banners
+
+Both files are read at runtime, so changing them only requires a restart, not a rebuild.
 
 ## Run
-1. Run `tsc` in the main folder to compile the TypeScript program into JavaScript
-1. Run `node out/index.js` to start the page generation
-   - If the script is started without any parameters, it will automatically generate a new page every 5 minutes
-   - Passing "once" as an argument will only generate a page a single time (example: `node out/index.js once`)
-   - Passing "test" will run a set of unit tests, which currently only works on my own calendar as it requires some entries
-1. The page is generated in the `dist` folder which can be served by any other means
+1. `npm install`
+1. `npm run build` to compile the server and to bundle the frontend
+1. `npm start` to start the server.  The status is regenerated every 5 minutes, the page is available at `http://localhost:<hostingPort>/` and is protected by basic authentication with the username `office` and the `webpassword`
+   - Passing a date as an argument generates the status for that day a single time instead (example: `npm start -- 1985-08-27`)
+
+For development, `npm run dev` starts the server together with the Vite dev server on port 5173, which proxies `/api` and `/xkcd` to the server.
+
+## API
+All routes except `POST /api/flags` are behind the same basic authentication as the page.
+
+| Route | Description |
+| --- | --- |
+| `GET /api/status` | The information, calendar entries, and current comic used to render the page |
+| `GET /api/flags` | `{ "meeting": Boolean, "focus": Boolean }` |
+| `POST /api/flags` | Sets either flag, for example `{ "focus": true }`.  Requires the header `Authorization: Bearer <webpassword>` |
+
+If both flags are set, the focus banner takes precedence as they occupy the same space.

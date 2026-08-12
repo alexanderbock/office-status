@@ -1,7 +1,7 @@
 node_modules/
+dist/
 
-src/auth.json
-src/config.json
-src/xkcd.json
-public
-out
+auth.json
+config.json
+
+server/data/
