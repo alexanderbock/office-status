@@ -5,6 +5,7 @@ export interface StatusEntry {
   status: string;
   location: string;
   isCurrent: boolean;
+  isPast: boolean;
 }
 
 export interface Info {

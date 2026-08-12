@@ -16,7 +16,9 @@ function toEntry(event: Event, now: moment.Moment): StatusEntry {
     endLabel: event.end.format("HH:mm"),
     status: event.status,
     location: event.location,
-    isCurrent: now >= event.start && now <= event.end
+    isCurrent: now >= event.start && now <= event.end,
+    // Full day entries carry no meaningful time, so they never count as finished
+    isPast: !event.isFullDayEntry && now > event.end
   };
 }
 

@@ -1,11 +1,30 @@
 :root {
-  --main-color: #252525;
   --main-margin: 25px;
+
+  --background-color: #ffffff;
+  --text-color: #000000;
+  --main-color: #252525;
+  --rule-color: #000000;
+  --past-color: #8a8a8a;
+}
+
+/* Toggled by the schedule in useDarkMode */
+html.dark {
+  --background-color: #101010;
+  --text-color: #e8e8e8;
+  --main-color: #b8b8b8;
+  --rule-color: #e8e8e8;
+  --past-color: #6a6a6a;
 }
 
 * {
   cursor: none;
   font-family: "KorolevLiU", sans-serif;
+}
+
+body {
+  background-color: var(--background-color);
+  color: var(--text-color);
 }
 
 hr.main {
@@ -16,8 +35,8 @@ hr.main {
 }
 
 hr.second {
-  color: #000000;
-  background-color: #000000;
+  color: var(--rule-color);
+  background-color: var(--rule-color);
   height: 2.5px;
   margin-bottom: var(--main-margin);
 }
@@ -84,6 +103,10 @@ tr.other {
 tr.current {
   font-size: 60px;
   font-style: italic;
+}
+
+tr.past {
+  color: var(--past-color);
 }
 
 div.timestamp {

@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 
-export function usePolling<T>(url: string, interval: number): T | null {
-  const [ data, setData ] = useState<T | null>(null);
+export interface Polled<T> {
+  data: T | null;
+  lastSuccess: number | null;
+}
+
+export function usePolling<T>(url: string, interval: number): Polled<T> {
+  const [ state, setState ] = useState<Polled<T>>({ data: null, lastSuccess: null });
 
   useEffect(() => {
     let cancelled = false;
@@ -12,7 +17,7 @@ export function usePolling<T>(url: string, interval: number): T | null {
         if (!response.ok)  throw new Error(`${url} responded with ${response.status}`);
 
         const value = await response.json() as T;
-        if (!cancelled)  setData(value);
+        if (!cancelled)  setState({ data: value, lastSuccess: Date.now() });
       }
       catch (e) {
         console.error(e);
@@ -27,5 +32,5 @@ export function usePolling<T>(url: string, interval: number): T | null {
     };
   }, [ url, interval ]);
 
-  return data;
+  return state;
 }
