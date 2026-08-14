@@ -1,5 +1,5 @@
 import moment from "moment-timezone";
-import { createDAVClient, fetchCalendarObjects } from "tsdav";
+import { fetchCalendarObjects, fetchCalendars } from "tsdav";
 
 import { auth, config } from "./config";
 
@@ -136,26 +136,31 @@ function parseCalendarEntry(text: string): Event {
 }
 
 export async function fetchEvents(now: moment.Moment): Promise<Event[]> {
-  const fullPath = `https://${config.hostname}${config.path}`;
-  const client = await createDAVClient({
-    serverUrl: fullPath,
-    credentials: {
-      username: auth.username,
-      password: auth.password
+  const rootUrl = `https://${config.hostname}`;
+  const fullPath = `${rootUrl}${config.path}`;
+  const ba = "Basic " + Buffer.from(`${auth.username}:${auth.password}`).toString("base64");
+
+  // The configured path already is the calendar home, so we skip the principal/home
+  // discovery that createDAVClient would do as not all servers support it there
+  let calendars = await fetchCalendars({
+    account: {
+      accountType: "caldav",
+      serverUrl: fullPath,
+      rootUrl: rootUrl,
+      homeUrl: fullPath
     },
-    authMethod: "Basic",
-    defaultAccountType: "caldav"
+    headers: {
+      authorization: ba
+    }
   });
 
   // Filter by calendars that we are interested in from the config file
-  let calendars = await client.fetchCalendars();
   calendars = calendars.filter(function(c) {
     let name = c.url.substring(fullPath.length);
     name = name.substring(0, name.length - 1); // remove terminating /
     return config.calendars.includes(name);
   });
 
-  const ba = "Basic " + Buffer.from(`${auth.username}:${auth.password}`).toString("base64");
   let results: Event[] = [];
   for (const calendar of calendars) {
     const today = now.utc().format("YYYY-MM-DD");
